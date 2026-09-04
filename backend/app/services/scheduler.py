@@ -85,6 +85,7 @@ async def evaluate_user_and_alert(user_doc: dict, profile_doc: dict) -> Optional
             "channel_sent": channels,
         }
         await db.alerts.insert_one(alert_record)
+        alert_record.pop("_id", None)
         return alert_record
 
     return None

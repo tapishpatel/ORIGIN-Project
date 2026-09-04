@@ -55,6 +55,7 @@ app.include_router(advisory.router)
 app.include_router(history.router)
 
 
+
 @app.get("/")
 async def root():
     return {

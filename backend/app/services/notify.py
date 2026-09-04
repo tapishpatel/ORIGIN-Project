@@ -92,14 +92,19 @@ async def send_sms_alert(phone: str, message: str) -> bool:
                     },
                 )
                 logger.info(f"Fast2SMS response: {res.text}")
-                NOTIFICATION_AUDIT_LOG.insert(0, {
-                    "channel": "sms",
-                    "status": "sent",
-                    "recipient": phone,
-                    "preview": message[:100] + "...",
-                    "time": "Just now",
-                })
-                return True
+                res_data = res.json()
+                if res.status_code == 200 and res_data.get("return"):
+                    NOTIFICATION_AUDIT_LOG.insert(0, {
+                        "channel": "sms",
+                        "status": "sent",
+                        "recipient": phone,
+                        "preview": message[:100] + "...",
+                        "time": "Just now",
+                    })
+                    return True
+                else:
+                    logger.error(f"Fast2SMS rejected the request: {res_data.get('message', 'Unknown error')}")
+                    return False
         except Exception as e:
             logger.error(f"SMS dispatch failed: {e}")
 

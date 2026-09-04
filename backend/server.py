@@ -828,7 +828,7 @@ def generate_advisory(aqi: float, pm2_5: float, uv: float, temp: float, risk_inf
                 f"Environmental data: AQI: {aqi}, PM2.5: {pm2_5} ug/m3, Temp: {temp}C, UV: {uv}. "
                 f"Computed risk level: {risk_level.upper()}. "
                 f"Be concrete on recommendations (e.g., mask type, peak hour avoidance, hydration, indoor ventilation). "
-                f"Respond in valid JSON format with exactly three keys: 'headline' (string), 'advisory_text' (string), and 'action_items' (list of 3 short strings)."
+                f"Respond in valid JSON format with exactly four keys: 'headline' (string), 'advisory_text' (string), 'action_items' (list of 3 short strings), and 'sms_text' (string: a unique, engaging 1-sentence SMS alert, max 100 chars)."
             )
             req = urllib.request.Request(
                 "https://router.huggingface.co/v1/chat/completions",
@@ -856,6 +856,7 @@ def generate_advisory(aqi: float, pm2_5: float, uv: float, temp: float, risk_inf
                     "headline": parsed.get("headline", f"{risk_info['badge']} — Tailored Advisory"),
                     "advisory_text": parsed.get("advisory_text"),
                     "action_items": parsed.get("action_items", []),
+                    "sms_text": parsed.get("sms_text", f"AeroHealth Alert: {risk_info['badge']}. Check your dashboard."),
                     "engine_mode": f"AI-generated ({short_name})",
                     "model_used": f"HuggingFace {model_name}",
                     "is_llm": True,
@@ -875,7 +876,7 @@ def generate_advisory(aqi: float, pm2_5: float, uv: float, temp: float, risk_inf
                 f"You are a public health assistant. Write a short (3-4 sentence) health advisory for: "
                 f"Age: {profile.get('age_group')}, occupation: {occupation}, conditions: {conditions}. "
                 f"AQI: {aqi}, PM2.5: {pm2_5} ug/m3, Temp: {temp}C, UV: {uv}, Risk: {risk_level}. "
-                f"Respond with pure JSON: {{'headline': '...', 'advisory_text': '...', 'action_items': ['...', '...', '...']}}"
+                f"Respond with pure JSON: {{'headline': '...', 'advisory_text': '...', 'action_items': ['...', '...', '...'], 'sms_text': 'a short unique SMS alert (max 100 chars)'}}"
             )
             req = urllib.request.Request(
                 "https://api.groq.com/openai/v1/chat/completions",
@@ -895,6 +896,7 @@ def generate_advisory(aqi: float, pm2_5: float, uv: float, temp: float, risk_inf
                     "headline": parsed.get("headline", f"{risk_info['badge']} — Tailored Advisory"),
                     "advisory_text": parsed.get("advisory_text"),
                     "action_items": parsed.get("action_items", []),
+                    "sms_text": parsed.get("sms_text", f"AeroHealth Alert: {risk_info['badge']}. Check your dashboard."),
                     "engine_mode": "AI-generated (Groq)",
                     "model_used": "Groq Llama 3.3",
                     "is_llm": True,
@@ -988,6 +990,7 @@ def generate_advisory(aqi: float, pm2_5: float, uv: float, temp: float, risk_inf
         "headline": headline,
         "advisory_text": " ".join(sentences),
         "action_items": actions[:4],
+        "sms_text": f"AeroHealth Alert: {headline}. Check your dashboard.",
         "engine_mode": "Heuristic fallback (no LLM)",
         "model_used": "Deterministic Clinical Heuristic",
         "is_llm": False,
@@ -1082,7 +1085,7 @@ def evaluate_and_notify_user(uid: str):
 
     # Real dispatch if SMS notification enabled
     if profile.get("notify_sms", False) and profile.get("phone"):
-        sms_body = f"AeroHealth ({risk_info['risk_level'].upper()}): {advisory['headline']}. {advisory['advisory_text'][:80]}..."
+        sms_body = advisory.get("sms_text", f"AeroHealth ({risk_info['risk_level'].upper()}): {advisory['headline']}")
         send_sms_notification(profile["phone"], sms_body)
 
     return alert_doc
@@ -1182,6 +1185,8 @@ class HealthAdvisoryHandler(BaseHTTPRequestHandler):
             else:
                 self._send_json({"app": "Personalized Weather-Health Advisory", "status": "online", "docs_url": "/docs"})
                 return
+
+
 
         elif path == "/docs":
             html = """<!DOCTYPE html>
@@ -1637,10 +1642,10 @@ class HealthAdvisoryHandler(BaseHTTPRequestHandler):
             profile = db_get_profile(uid) or DEMO_PERSONAS[0]["profile"]
             loc = profile.get("location", {"label": "Bhopal, MP"})
             
-            target_to = body.get("recipient", SMTP_USER or user.get("email", "test@example.com"))
+            target_to = body.get("recipient") or user.get("email") or SMTP_USER or "test@example.com"
             dispatch_res = send_email_notification(
                 to_email=target_to,
-                subject=f"🧪 [AeroHealth Test] Verified Environmental Alert Dispatch ({datetime.now().strftime('%H:%M:%S')})",
+                subject=f"⚠️ [AeroHealth Test] Verified Environmental Alert Dispatch ({datetime.now().strftime('%H:%M:%S')})",
                 headline="Direct Integration Test: Environmental Health Feed Operational",
                 advisory_text="This test alert verifies that your Gmail SMTP notification gateway, personalized health advisory engine, and environmental feed are fully operational and communicating seamlessly.",
                 risk_level="high",
