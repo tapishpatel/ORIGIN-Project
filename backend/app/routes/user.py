@@ -32,26 +32,10 @@ async def get_me(user: dict = Depends(get_current_user)):
     """Returns the authenticated user and their current health profile."""
     profile = await db.profiles.find_one({"user_id": user["id"]})
     if not profile:
-        profile = {
-            "user_id": user["id"],
-            "age_group": "18-40",
-            "conditions": ["none"],
-            "occupation": "office",
-            "location": {
-                "lat": 23.2547,
-                "lon": 77.4029,
-                "label": "Bhopal, Madhya Pradesh",
-                "city": "Bhopal",
-                "country": "India",
-            },
-            "notify_email": True,
-            "notify_sms": False,
-            "phone": "",
-            "alert_sensitivity": "normal",
-            "updated_at": datetime.now(timezone.utc),
-        }
-        await db.profiles.insert_one(profile)
+        raise HTTPException(status_code=404, detail="Profile not found. Please complete onboarding.")
 
+    user.pop("_id", None)
+    profile.pop("_id", None)
     return {
         "user": user,
         "profile": profile,
@@ -84,6 +68,8 @@ async def update_profile(req: UpdateProfileRequest, user: dict = Depends(get_cur
     )
 
     updated_profile = await db.profiles.find_one({"user_id": user["id"]})
+    if updated_profile:
+        updated_profile.pop("_id", None)
     return {"status": "success", "profile": updated_profile}
 
 

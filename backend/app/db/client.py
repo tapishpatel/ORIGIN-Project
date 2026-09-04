@@ -140,7 +140,6 @@ class DatabaseWrapper:
                 self.is_connected = True
                 self.is_in_memory = False
                 logger.info("Successfully connected to MongoDB Atlas.")
-                await seed_demo_data(self)
                 return
             except Exception as e:
                 logger.warning(f"Failed to connect to MongoDB Atlas ({e}). Falling back to in-memory store.")
@@ -148,7 +147,6 @@ class DatabaseWrapper:
         self.is_connected = True
         self.is_in_memory = True
         logger.info("Using in-memory persistent database store.")
-        await seed_demo_data(self)
 
     async def disconnect(self):
         if self.client:
@@ -159,97 +157,7 @@ class DatabaseWrapper:
 db = DatabaseWrapper()
 
 
-DEMO_PERSONAS = [
-    {
-        "user_id": "demo-asthma-worker",
-        "email": "aditi.asthma@demo.org",
-        "name": "Aditi Sharma",
-        "picture": "https://api.dicebear.com/7.x/avataaars/svg?seed=Aditi",
-        "profile": {
-            "age_group": "18-40",
-            "conditions": ["asthma"],
-            "occupation": "outdoor_worker",
-            "location": {
-                "lat": 23.2547,
-                "lon": 77.4029,
-                "label": "Bhopal, Madhya Pradesh",
-                "city": "Bhopal",
-                "country": "India",
-            },
-            "notify_email": True,
-            "notify_sms": True,
-            "phone": "+919876543210",
-            "alert_sensitivity": "high",
-        },
-    },
-    {
-        "user_id": "demo-senior-cardiac",
-        "email": "rajiv.cardiac@demo.org",
-        "name": "Rajiv Verma",
-        "picture": "https://api.dicebear.com/7.x/avataaars/svg?seed=Rajiv",
-        "profile": {
-            "age_group": "60+",
-            "conditions": ["heart_disease", "hypertension"],
-            "occupation": "other",
-            "location": {
-                "lat": 28.6139,
-                "lon": 77.2090,
-                "label": "New Delhi, Delhi",
-                "city": "New Delhi",
-                "country": "India",
-            },
-            "notify_email": True,
-            "notify_sms": False,
-            "phone": "+919811122233",
-            "alert_sensitivity": "high",
-        },
-    },
-    {
-        "user_id": "demo-office-healthy",
-        "email": "karan.office@demo.org",
-        "name": "Karan Malhotra",
-        "picture": "https://api.dicebear.com/7.x/avataaars/svg?seed=Karan",
-        "profile": {
-            "age_group": "18-40",
-            "conditions": ["none"],
-            "occupation": "office",
-            "location": {
-                "lat": 19.0760,
-                "lon": 72.8777,
-                "label": "Mumbai, Maharashtra",
-                "city": "Mumbai",
-                "country": "India",
-            },
-            "notify_email": False,
-            "notify_sms": False,
-            "phone": "",
-            "alert_sensitivity": "normal",
-        },
-    },
-    {
-        "user_id": "demo-pregnant-parent",
-        "email": "ananya.pregnant@demo.org",
-        "name": "Ananya Sen",
-        "picture": "https://api.dicebear.com/7.x/avataaars/svg?seed=Ananya",
-        "profile": {
-            "age_group": "18-40",
-            "conditions": ["pregnant", "allergies"],
-            "occupation": "student",
-            "location": {
-                "lat": 12.9716,
-                "lon": 77.5946,
-                "label": "Bengaluru, Karnataka",
-                "city": "Bengaluru",
-                "country": "India",
-            },
-            "notify_email": True,
-            "notify_sms": False,
-            "phone": "+919833344455",
-            "alert_sensitivity": "high",
-        },
-    },
-]
-
+DEMO_PERSONAS = []
 
 async def seed_demo_data(database: DatabaseWrapper):
     now = datetime.now(timezone.utc)

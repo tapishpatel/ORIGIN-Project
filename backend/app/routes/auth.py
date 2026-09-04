@@ -25,14 +25,12 @@ def create_access_token(user_id: str, email: str) -> str:
     return jwt.encode(payload, settings.JWT_SECRET, algorithm=settings.JWT_ALGORITHM)
 
 
-async def get_current_user(authorization: Optional[str] = Header(None)) -> dict:
-    if not authorization or not authorization.startswith("Bearer "):
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Missing or invalid authentication token",
-        )
+from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 
-    token = authorization.split(" ")[1]
+security = HTTPBearer()
+
+async def get_current_user(credentials: HTTPAuthorizationCredentials = Depends(security)) -> dict:
+    token = credentials.credentials
     try:
         payload = jwt.decode(token, settings.JWT_SECRET, algorithms=[settings.JWT_ALGORITHM])
         user_id = payload.get("sub")
@@ -45,52 +43,6 @@ async def get_current_user(authorization: Optional[str] = Header(None)) -> dict:
     except jwt.PyJWTError:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Token expired or signature invalid")
 
-
-@router.get("/personas")
-async def list_personas():
-    """Lists pre-configured demo personas with different health sensitivities."""
-    return [
-        {
-            "id": p["user_id"],
-            "name": p["name"],
-            "email": p["email"],
-            "picture": p["picture"],
-            "occupation": p["profile"]["occupation"],
-            "conditions": p["profile"]["conditions"],
-            "age_group": p["profile"]["age_group"],
-            "location": p["profile"]["location"]["label"],
-        }
-        for p in DEMO_PERSONAS
-    ]
-
-
-@router.post("/demo-login")
-async def demo_login(req: DemoLoginRequest):
-    """Instant login as one of the pre-configured demo personas."""
-    user = await db.users.find_one({"id": req.persona_id})
-    if not user:
-        # Fallback to first persona
-        persona = next((p for p in DEMO_PERSONAS if p["user_id"] == req.persona_id), DEMO_PERSONAS[0])
-        user = {
-            "id": persona["user_id"],
-            "_id": persona["user_id"],
-            "email": persona["email"],
-            "name": persona["name"],
-            "picture": persona["picture"],
-            "is_demo": True,
-            "created_at": datetime.now(timezone.utc),
-        }
-        await db.users.insert_one(user)
-
-    profile = await db.profiles.find_one({"user_id": user["id"]})
-    token = create_access_token(user["id"], user["email"])
-
-    return {
-        "access_token": token,
-        "token_type": "bearer",
-        "user": user,
-        "profile": profile,
-    }
 
 
 @router.get("/google/login")
@@ -160,6 +112,7 @@ async def google_callback(code: str = Query(...)):
                 "id": user_id,
                 "_id": user_id,
                 "email": email,
+                "username": name,
                 "name": name,
                 "picture": picture,
                 "google_sub": google_sub,
@@ -168,27 +121,35 @@ async def google_callback(code: str = Query(...)):
             }
             await db.users.insert_one(user)
 
-            # Create default profile
-            default_profile = {
-                "user_id": user_id,
-                "age_group": "18-40",
-                "conditions": ["none"],
-                "occupation": "office",
-                "location": {
-                    "lat": 23.2547,
-                    "lon": 77.4029,
-                    "label": "Bhopal, Madhya Pradesh",
-                    "city": "Bhopal",
-                    "country": "India",
-                },
-                "notify_email": True,
-                "notify_sms": False,
-                "phone": "",
-                "alert_sensitivity": "normal",
-                "updated_at": now,
-            }
-            await db.profiles.insert_one(default_profile)
+            # Do NOT insert a default profile. Let the user fill out the form.
+            is_new_user = True
+        else:
+            is_new_user = False
+            # Update user data in case their Google profile changed
+            await db.users.update_one(
+                {"id": user["id"]},
+                {"$set": {"username": name, "name": name, "picture": picture}}
+            )
+            # update the local dict to reflect changes for the token/response
+            user["username"] = name
+            user["name"] = name
+            user["picture"] = picture
 
         jwt_token = create_access_token(user["id"], user["email"])
-        redirect_target = f"{settings.FRONTEND_URL}/#token={jwt_token}"
-        return RedirectResponse(redirect_target)
+        print(f"\n=======================================================")
+        print(f"  GOOGLE OAUTH SUCCESSFUL!")
+        print(f"  USER: {user['email']}")
+        print(f"  ACCESS TOKEN: {jwt_token}")
+        print(f"=======================================================\n")
+
+        # Check if they have a profile
+        existing_profile = await db.profiles.find_one({"user_id": user["id"]})
+        if not existing_profile or is_new_user:
+            redirect_target = f"{settings.FRONTEND_URL}/form"
+        else:
+            redirect_target = settings.FRONTEND_URL
+
+        response = RedirectResponse(redirect_target)
+        # Set token as a readable cookie so frontend can extract it without exposing it in the URL
+        response.set_cookie(key="aero_auth_token", value=jwt_token, httponly=False, max_age=3600, path="/")
+        return response
