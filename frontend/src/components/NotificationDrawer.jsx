@@ -1,214 +1,227 @@
-import React from 'react';
-import { IconBell, IconCheckCircle, IconRefreshCw } from './Icons';
-
-export const NotificationDrawer = ({ isOpen, onClose, auditLogs, onTriggerScheduler, isTriggering }) => {
+export const NotificationDrawer = ({
+  isOpen,
+  onClose,
+  auditLogs = [],
+  onTriggerScheduler,
+  isTriggering,
+  onSendTestEmail,
+  onViewAlertsTab
+}) => {
   if (!isOpen) return null;
 
   return (
-    <div className="drawer-overlay" onClick={onClose}>
-      <div className="drawer-panel" onClick={(e) => e.stopPropagation()}>
-        <div className="drawer-header">
-          <div className="drawer-title">
-            <IconBell size={18} color="#38bdf8" />
-            <span>Alert Pipeline & Dispatches</span>
+    <div
+      onClick={onClose}
+      style={{
+        position: 'fixed',
+        top: 0, left: 0, right: 0, bottom: 0,
+        background: 'rgba(15, 23, 42, 0.35)',
+        backdropFilter: 'blur(6px)',
+        zIndex: 1000,
+        display: 'flex',
+        justifyContent: 'flex-end',
+        animation: 'fadeIn 0.2s ease-out'
+      }}
+    >
+      <div
+        onClick={(e) => e.stopPropagation()}
+        style={{
+          width: '400px',
+          maxWidth: '92vw',
+          height: '100%',
+          background: '#ffffff',
+          boxShadow: '-8px 0 24px rgba(15, 23, 42, 0.12)',
+          display: 'flex',
+          flexDirection: 'column',
+          borderLeft: '1px solid var(--border-card)'
+        }}
+      >
+        <div style={{
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          padding: '16px 20px',
+          borderBottom: '1px solid #f1f5f9'
+        }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <span>🔔</span>
+            <h2 style={{ fontSize: '1rem', fontWeight: 700, color: '#0f172a', margin: 0, letterSpacing: '-0.015em' }}>
+              Alerts
+            </h2>
           </div>
-          <button className="drawer-close-btn" onClick={onClose}>&times;</button>
+          <button
+            onClick={onClose}
+            style={{
+              width: '28px',
+              height: '28px',
+              borderRadius: '50%',
+              background: '#f1f5f9',
+              border: 'none',
+              fontSize: '0.95rem',
+              color: '#64748b',
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center'
+            }}
+          >
+            ×
+          </button>
         </div>
 
-        <div className="drawer-content">
-          {/* Hackathon Demo Trigger */}
-          <div className="demo-trigger-box">
-            <div className="trigger-title">APScheduler Background Evaluator</div>
-            <p className="trigger-desc">
-              In production, APScheduler evaluates users every 15 mins. For this hackathon presentation, click below to trigger the evaluation job immediately:
+        <div style={{ padding: '16px 20px', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '14px', flex: 1 }}>
+
+          {onViewAlertsTab && (
+            <button
+              onClick={() => { onViewAlertsTab(); onClose(); }}
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                padding: '10px 14px',
+                background: '#f1f5f9',
+                borderRadius: '12px',
+                border: '1px solid #e2e8f0',
+                color: '#0f172a',
+                fontWeight: 600,
+                fontSize: '0.82rem',
+                cursor: 'pointer'
+              }}
+            >
+              <span>Open Full Alerts Timeline</span>
+              <span>→</span>
+            </button>
+          )}
+
+          <div style={{
+            background: '#ecfdf5',
+            border: '1px solid #a7f3d0',
+            borderRadius: '12px',
+            padding: '14px'
+          }}>
+            <div style={{ fontSize: '0.82rem', fontWeight: 700, color: '#065f46', marginBottom: '4px' }}>
+              📧 Dispatch live alert
+            </div>
+            <p style={{ fontSize: '0.74rem', color: '#047857', lineHeight: 1.4, margin: '0 0 10px 0' }}>
+              Send verified Gmail SMTP alert to <strong>tornovdutta@gmail.com</strong>.
             </p>
             <button
-              className="trigger-run-btn"
-              onClick={onTriggerScheduler}
-              disabled={isTriggering}
+              onClick={onSendTestEmail}
+              style={{
+                width: '100%',
+                padding: '8px',
+                background: '#059669',
+                color: '#ffffff',
+                border: 'none',
+                borderRadius: '8px',
+                fontSize: '0.78rem',
+                fontWeight: 600,
+                cursor: 'pointer'
+              }}
             >
-              <IconRefreshCw size={14} className={isTriggering ? 'spinning' : ''} />
-              <span>{isTriggering ? 'Running Background Evaluation...' : 'Simulate Background Poll Now'}</span>
+              Send Alert →
             </button>
           </div>
 
-          {/* Audit History */}
-          <div className="audit-section">
-            <div className="audit-section-title">Recent Automated Dispatches</div>
-            {(!auditLogs || auditLogs.length === 0) ? (
-              <div className="empty-audit">No background dispatches recorded yet. Click above to test.</div>
+          <div style={{
+            background: '#f8fafc',
+            border: '1px solid var(--border-card)',
+            borderRadius: '12px',
+            padding: '14px'
+          }}>
+            <div style={{ fontSize: '0.82rem', fontWeight: 700, color: '#0f172a', marginBottom: '4px' }}>
+              ⏱ Background evaluator
+            </div>
+            <p style={{ fontSize: '0.74rem', color: '#475569', lineHeight: 1.4, margin: '0 0 10px 0' }}>
+              Run 15-min background check vs live thresholds.
+            </p>
+            <button
+              onClick={onTriggerScheduler}
+              disabled={isTriggering}
+              style={{
+                width: '100%',
+                padding: '8px',
+                background: '#0f172a',
+                color: '#ffffff',
+                border: 'none',
+                borderRadius: '8px',
+                fontSize: '0.78rem',
+                fontWeight: 600,
+                cursor: isTriggering ? 'not-allowed' : 'pointer'
+              }}
+            >
+              {isTriggering ? 'Running…' : 'Trigger Check'}
+            </button>
+          </div>
+
+          <div>
+            <div style={{
+              fontSize: '0.7rem',
+              fontWeight: 700,
+              textTransform: 'uppercase',
+              letterSpacing: '0.06em',
+              color: '#64748b',
+              marginBottom: '8px'
+            }}>
+              Recent ({auditLogs.length})
+            </div>
+
+            {auditLogs.length === 0 ? (
+              <div style={{
+                background: '#f8fafc',
+                border: '1px solid #f1f5f9',
+                borderRadius: '10px',
+                padding: '20px 14px',
+                textAlign: 'center',
+                color: '#64748b',
+                fontSize: '0.78rem'
+              }}>
+                No dispatches today.
+              </div>
             ) : (
-              <div className="audit-list">
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
                 {auditLogs.map((log, idx) => (
-                  <div key={idx} className="audit-card">
-                    <div className="audit-top">
-                      <span className={`channel-badge ${log.channel}`}>{log.channel}</span>
-                      <span className="audit-time">{log.time}</span>
+                  <div
+                    key={idx}
+                    style={{
+                      background: '#ffffff',
+                      border: '1px solid var(--border-card)',
+                      borderRadius: '10px',
+                      padding: '10px 12px'
+                    }}
+                  >
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '4px' }}>
+                      <span style={{
+                        fontSize: '0.62rem',
+                        fontWeight: 700,
+                        textTransform: 'uppercase',
+                        padding: '2px 7px',
+                        borderRadius: '4px',
+                        background: log.channel === 'email' ? '#eff6ff' : '#ecfdf5',
+                        color: log.channel === 'email' ? '#1d4ed8' : '#065f46'
+                      }}>
+                        {log.channel || 'EMAIL'}
+                      </span>
+                      <span style={{ fontSize: '0.66rem', color: '#94a3b8' }}>
+                        {log.time || 'Just now'}
+                      </span>
                     </div>
-                    <div className="audit-subject">{log.subject}</div>
-                    <div className="audit-preview">{log.preview}</div>
-                    <div className="audit-recipient">To: {log.recipient} • Status: <span className="status-ok">{log.status}</span></div>
+                    <div style={{ fontSize: '0.8rem', fontWeight: 600, color: '#0f172a', marginBottom: '2px', letterSpacing: '-0.01em' }}>
+                      {log.subject || 'Aero Health Alert'}
+                    </div>
+                    <div style={{ fontSize: '0.72rem', color: '#64748b', lineHeight: 1.35, marginBottom: '4px' }}>
+                      {log.preview || log.message}
+                    </div>
+                    <div style={{ fontSize: '0.66rem', color: '#94a3b8' }}>
+                      → {log.recipient} · <span style={{ color: '#059669', fontWeight: 600 }}>Delivered</span>
+                    </div>
                   </div>
                 ))}
               </div>
             )}
           </div>
-        </div>
 
-        <style>{`
-          .drawer-overlay {
-            position: fixed;
-            top: 0; left: 0; right: 0; bottom: 0;
-            background: rgba(0, 0, 0, 0.6);
-            backdrop-filter: blur(6px);
-            z-index: 1000;
-            display: flex;
-            justify-content: flex-end;
-          }
-          .drawer-panel {
-            width: 400px;
-            max-width: 90vw;
-            height: 100%;
-            background: #0f172a;
-            border-left: 1px solid var(--border-subtle);
-            box-shadow: -10px 0 30px rgba(0, 0, 0, 0.6);
-            display: flex;
-            flex-direction: column;
-            animation: slideLeft 0.25s cubic-bezier(0.16, 1, 0.3, 1);
-          }
-          @keyframes slideLeft {
-            from { transform: translateX(100%); }
-            to { transform: translateX(0); }
-          }
-          .drawer-header {
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            padding: 20px;
-            border-bottom: 1px solid var(--border-subtle);
-          }
-          .drawer-title {
-            display: flex;
-            align-items: center;
-            gap: 8px;
-            font-size: 1rem;
-            font-weight: 700;
-            color: var(--text-primary);
-          }
-          .drawer-close-btn {
-            font-size: 1.5rem;
-            line-height: 1;
-            color: var(--text-muted);
-          }
-          .drawer-content {
-            padding: 20px;
-            overflow-y: auto;
-            display: flex;
-            flex-direction: column;
-            gap: 20px;
-          }
-          .demo-trigger-box {
-            background: rgba(56, 189, 248, 0.08);
-            border: 1px solid rgba(56, 189, 248, 0.25);
-            border-radius: var(--radius-md);
-            padding: 16px;
-          }
-          .trigger-title {
-            font-size: 0.85rem;
-            font-weight: 700;
-            color: #38bdf8;
-            margin-bottom: 6px;
-          }
-          .trigger-desc {
-            font-size: 0.78rem;
-            color: var(--text-secondary);
-            line-height: 1.4;
-            margin-bottom: 14px;
-          }
-          .trigger-run-btn {
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            gap: 8px;
-            width: 100%;
-            padding: 10px;
-            background: #38bdf8;
-            color: #0b0f17;
-            border-radius: var(--radius-md);
-            font-size: 0.82rem;
-            font-weight: 700;
-          }
-          .audit-section-title {
-            font-size: 0.8rem;
-            font-weight: 700;
-            text-transform: uppercase;
-            letter-spacing: 0.05em;
-            color: var(--text-muted);
-            margin-bottom: 12px;
-          }
-          .empty-audit {
-            font-size: 0.82rem;
-            color: var(--text-muted);
-            font-style: italic;
-          }
-          .audit-list {
-            display: flex;
-            flex-direction: column;
-            gap: 10px;
-          }
-          .audit-card {
-            background: rgba(255, 255, 255, 0.03);
-            border: 1px solid var(--border-subtle);
-            border-radius: var(--radius-md);
-            padding: 12px;
-          }
-          .audit-top {
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            margin-bottom: 6px;
-          }
-          .channel-badge {
-            font-size: 0.65rem;
-            font-weight: 700;
-            text-transform: uppercase;
-            padding: 2px 6px;
-            border-radius: 4px;
-          }
-          .channel-badge.email {
-            background: rgba(59, 130, 246, 0.2);
-            color: #60a5fa;
-          }
-          .channel-badge.sms {
-            background: rgba(16, 185, 129, 0.2);
-            color: #34d399;
-          }
-          .audit-time {
-            font-size: 0.72rem;
-            color: var(--text-muted);
-          }
-          .audit-subject {
-            font-size: 0.85rem;
-            font-weight: 600;
-            color: var(--text-primary);
-            margin-bottom: 4px;
-          }
-          .audit-preview {
-            font-size: 0.78rem;
-            color: var(--text-secondary);
-            line-height: 1.4;
-            margin-bottom: 6px;
-          }
-          .audit-recipient {
-            font-size: 0.72rem;
-            color: var(--text-muted);
-          }
-          .status-ok {
-            color: #34d399;
-            font-weight: 600;
-            text-transform: capitalize;
-          }
-        `}</style>
+        </div>
       </div>
     </div>
   );

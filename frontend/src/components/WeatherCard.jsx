@@ -1,222 +1,188 @@
 import React from 'react';
-import { 
-  IconSun, IconCloudSun, IconCloud, IconCloudRain, 
-  IconCloudLightning, IconDroplets, IconWind, IconActivity 
-} from './Icons';
 
-export const WeatherCard = ({ weather }) => {
-  const getConditionIcon = (iconName) => {
-    switch (iconName) {
-      case 'Sun': return <IconSun size={36} color="#fbbf24" />;
-      case 'SunDim': return <IconSun size={36} color="#f59e0b" />;
-      case 'CloudSun': return <IconCloudSun size={36} color="#38bdf8" />;
-      case 'Cloud': return <IconCloud size={36} color="#94a3b8" />;
-      case 'CloudRain': return <IconCloudRain size={36} color="#60a5fa" />;
-      case 'CloudLightning': return <IconCloudLightning size={36} color="#f43f5e" />;
-      default: return <IconCloudSun size={36} color="#38bdf8" />;
-    }
-  };
+export const WeatherCard = ({ weather, location, user, isForcedFallback, onToggleFallback }) => {
+  const temp = Math.round(weather?.temperature ?? 31);
+  const uv = weather?.uv_index ?? 7;
+  const humidity = weather?.humidity ?? 62;
+  const wind = weather?.wind_speed ?? 12;
+  const condition = weather?.description || 'Partly cloudy';
+  const name = user?.name?.split(' ')[0] || 'Aditi';
+  const visibility = weather?.visibility ?? 8;
 
-  const getUVBadge = (uv) => {
-    if (uv >= 8) return { label: 'Very High', color: '#ef4444', bg: 'rgba(239, 68, 68, 0.15)' };
-    if (uv >= 6) return { label: 'High', color: '#f97316', bg: 'rgba(249, 115, 22, 0.15)' };
-    if (uv >= 3) return { label: 'Moderate', color: '#f59e0b', bg: 'rgba(245, 158, 11, 0.15)' };
-    return { label: 'Low', color: '#10b981', bg: 'rgba(16, 185, 129, 0.15)' };
-  };
-
-  const uvMeta = getUVBadge(weather?.uv_index || 0);
+  const hour = new Date().getHours();
+  const greeting = hour < 12 ? 'Good morning' : hour < 18 ? 'Good afternoon' : 'Good evening';
 
   return (
-    <div className="glass-card weather-card">
-      <div className="card-header">
-        <div className="header-title">
-          <IconActivity size={18} color="#38bdf8" />
-          <span>Atmospheric Parameters</span>
-        </div>
-        <span className="live-pill">Live Forecast</span>
-      </div>
+    <div className="hero-weather-card">
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '20px', position: 'relative', zIndex: 1 }}>
+        <div>
+          <div style={{
+            display: 'inline-flex',
+            alignItems: 'center',
+            gap: '6px',
+            padding: '5px 12px',
+            background: 'rgba(255, 255, 255, 0.75)',
+            backdropFilter: 'blur(10px)',
+            borderRadius: '999px',
+            border: '1px solid rgba(0, 0, 0, 0.05)',
+            fontSize: '0.78rem',
+            fontWeight: 600,
+            color: '#334155',
+            marginBottom: '14px'
+          }}>
+            <span>📍</span>
+            <span>{location?.label || 'Bhopal, India'}</span>
+            <span style={{ color: '#94a3b8', marginLeft: '4px', fontSize: '0.72rem' }}>⟳</span>
+          </div>
 
-      <div className="weather-hero">
-        <div className="temp-display">
-          <span className="temp-val">{weather?.temperature ?? '--'}</span>
-          <span className="temp-unit">°C</span>
-        </div>
-        <div className="condition-info">
-          <div className="condition-icon-box">
-            {getConditionIcon(weather?.icon)}
-          </div>
-          <div className="condition-label">{weather?.condition_label || 'Partly Cloudy'}</div>
-        </div>
-      </div>
+          <h1 style={{
+            fontSize: '2.3rem',
+            fontWeight: 700,
+            color: '#0f172a',
+            letterSpacing: '-0.03em',
+            lineHeight: 1.1,
+            margin: 0
+          }}>
+            {greeting}, {name}
+          </h1>
+          <p style={{
+            fontSize: '0.95rem',
+            color: '#475569',
+            marginTop: '6px',
+            fontWeight: 400,
+            letterSpacing: '-0.01em'
+          }}>
+            Breathe better. Live healthier.
+          </p>
 
-      <div className="weather-grid">
-        <div className="metric-box">
-          <div className="metric-label">
-            <IconDroplets size={16} color="#38bdf8" />
-            <span>Relative Humidity</span>
-          </div>
-          <div className="metric-value">{weather?.humidity ?? '--'}%</div>
-          <div className="metric-bar">
-            <div className="bar-fill" style={{ width: `${Math.min(100, weather?.humidity || 0)}%`, background: '#38bdf8' }} />
+          <div style={{ marginTop: '14px', display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: '10px' }}>
+            <span style={{
+              fontSize: '0.74rem',
+              color: '#64748b',
+              background: 'rgba(255, 255, 255, 0.6)',
+              padding: '4px 10px',
+              borderRadius: '999px',
+              fontWeight: 500
+            }}>
+              ⏱ Updated just now
+            </span>
+            {onToggleFallback && (
+              <button
+                onClick={onToggleFallback}
+                style={{
+                  background: 'none',
+                  border: 'none',
+                  fontSize: '0.72rem',
+                  fontWeight: 500,
+                  color: isForcedFallback ? '#ef4444' : '#64748b',
+                  cursor: 'pointer'
+                }}
+              >
+                {isForcedFallback ? 'Exit Fallback' : 'Simulate Outage'}
+              </button>
+            )}
           </div>
         </div>
 
-        <div className="metric-box">
-          <div className="metric-label">
-            <IconSun size={16} color="#fbbf24" />
-            <span>Solar UV Index</span>
+        <div style={{ textAlign: 'right', position: 'relative' }}>
+          <div style={{
+            fontFamily: 'var(--font-script)',
+            fontSize: '1.3rem',
+            color: '#0369a1',
+            marginBottom: '-4px',
+            fontWeight: 600,
+            letterSpacing: '0'
+          }}>
+            Clearer days, healthier you
           </div>
-          <div className="metric-value-row">
-            <span className="metric-value">{weather?.uv_index ?? '--'}</span>
-            <span className="uv-badge" style={{ color: uvMeta.color, background: uvMeta.bg }}>
-              {uvMeta.label}
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: '10px' }}>
+            <span style={{ fontSize: '2.4rem' }}>⛅</span>
+            <span style={{
+              fontSize: '3.6rem',
+              fontWeight: 700,
+              letterSpacing: '-0.045em',
+              color: '#0f172a',
+              lineHeight: 1
+            }}>
+              {temp}°
             </span>
           </div>
-          <div className="metric-bar">
-            <div className="bar-fill" style={{ width: `${Math.min(100, ((weather?.uv_index || 0) / 12) * 100)}%`, background: uvMeta.color }} />
+          <div style={{ fontSize: '1rem', fontWeight: 600, color: '#1e293b', marginTop: '2px' }}>
+            {condition}
           </div>
-        </div>
-
-        <div className="metric-box">
-          <div className="metric-label">
-            <IconWind size={16} color="#34d399" />
-            <span>Wind Speed</span>
-          </div>
-          <div className="metric-value">{weather?.wind_speed ?? '--'} <span className="sub-unit">km/h</span></div>
-          <div className="metric-bar">
-            <div className="bar-fill" style={{ width: `${Math.min(100, ((weather?.wind_speed || 0) / 40) * 100)}%`, background: '#34d399' }} />
+          <div style={{ fontSize: '0.8rem', color: '#64748b', marginTop: '2px' }}>
+            Feels like {temp + 3}° · H {temp + 3}° · L {temp - 6}°
           </div>
         </div>
       </div>
 
-      <style>{`
-        .weather-card {
-          display: flex;
-          flex-direction: column;
-          justify-content: space-between;
-        }
-        .card-header {
-          display: flex;
-          align-items: center;
-          justify-content: space-between;
-          margin-bottom: 20px;
-        }
-        .header-title {
-          display: flex;
-          align-items: center;
-          gap: 8px;
-          font-size: 0.9rem;
-          font-weight: 700;
-          text-transform: uppercase;
-          letter-spacing: 0.05em;
-          color: var(--text-secondary);
-        }
-        .live-pill {
-          font-size: 0.7rem;
-          padding: 2px 8px;
-          border-radius: var(--radius-full);
-          background: rgba(255, 255, 255, 0.08);
-          color: var(--text-muted);
-          font-weight: 600;
-        }
-        .weather-hero {
-          display: flex;
-          align-items: center;
-          justify-content: space-between;
-          padding: 10px 0 24px;
-        }
-        .temp-display {
-          display: flex;
-          align-items: baseline;
-        }
-        .temp-val {
-          font-family: var(--font-display);
-          font-size: 4rem;
-          font-weight: 800;
-          line-height: 1;
-          color: var(--text-primary);
-        }
-        .temp-unit {
-          font-size: 1.8rem;
-          font-weight: 600;
-          color: var(--text-muted);
-          margin-left: 4px;
-        }
-        .condition-info {
-          display: flex;
-          flex-direction: column;
-          align-items: flex-end;
-          gap: 6px;
-        }
-        .condition-icon-box {
-          filter: drop-shadow(0 0 16px rgba(56, 189, 248, 0.3));
-        }
-        .condition-label {
-          font-size: 1rem;
-          font-weight: 600;
-          color: var(--text-primary);
-        }
-        .weather-grid {
-          display: grid;
-          grid-template-columns: 1fr 1fr 1fr;
-          gap: 12px;
-          border-top: 1px solid var(--border-subtle);
-          padding-top: 18px;
-        }
-        .metric-box {
-          background: rgba(255, 255, 255, 0.03);
-          border: 1px solid var(--border-subtle);
-          border-radius: var(--radius-md);
-          padding: 12px;
-        }
-        .metric-label {
-          display: flex;
-          align-items: center;
-          gap: 6px;
-          font-size: 0.75rem;
-          color: var(--text-secondary);
-          margin-bottom: 6px;
-        }
-        .metric-value-row {
-          display: flex;
-          align-items: center;
-          justify-content: space-between;
-        }
-        .metric-value {
-          font-family: var(--font-display);
-          font-size: 1.25rem;
-          font-weight: 700;
-          color: var(--text-primary);
-        }
-        .sub-unit {
-          font-size: 0.75rem;
-          font-weight: 500;
-          color: var(--text-muted);
-        }
-        .uv-badge {
-          font-size: 0.65rem;
-          font-weight: 700;
-          padding: 1px 6px;
-          border-radius: 4px;
-        }
-        .metric-bar {
-          height: 4px;
-          background: rgba(255, 255, 255, 0.08);
-          border-radius: 2px;
-          margin-top: 8px;
-          overflow: hidden;
-        }
-        .bar-fill {
-          height: 100%;
-          border-radius: 2px;
-          transition: width 0.5s ease-out;
-        }
-        @media (max-width: 640px) {
-          .weather-grid {
-            grid-template-columns: 1fr;
-          }
-        }
-      `}</style>
+      <div style={{
+        display: 'grid',
+        gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))',
+        gap: '10px',
+        marginTop: '24px',
+        position: 'relative',
+        zIndex: 1
+      }}>
+        <div style={chipStyle}>
+          <span style={chipIconStyle}>💧</span>
+          <div>
+            <div style={chipLabelStyle}>Humidity</div>
+            <div style={chipValueStyle}>{humidity}%</div>
+          </div>
+        </div>
+        <div style={chipStyle}>
+          <span style={chipIconStyle}>💨</span>
+          <div>
+            <div style={chipLabelStyle}>Wind</div>
+            <div style={chipValueStyle}>{wind} km/h</div>
+          </div>
+        </div>
+        <div style={chipStyle}>
+          <span style={chipIconStyle}>☀️</span>
+          <div>
+            <div style={chipLabelStyle}>UV Index</div>
+            <div style={chipValueStyle}>
+              {uv} <span style={{ fontSize: '0.72rem', fontWeight: 500, color: '#d97706', marginLeft: '4px' }}>{uv >= 6 ? 'High' : 'Moderate'}</span>
+            </div>
+          </div>
+        </div>
+        <div style={chipStyle}>
+          <span style={chipIconStyle}>👁️</span>
+          <div>
+            <div style={chipLabelStyle}>Visibility</div>
+            <div style={chipValueStyle}>{visibility} km</div>
+          </div>
+        </div>
+      </div>
     </div>
   );
+};
+
+const chipStyle = {
+  background: 'rgba(255, 255, 255, 0.7)',
+  backdropFilter: 'blur(8px)',
+  borderRadius: '14px',
+  padding: '10px 14px',
+  border: '1px solid rgba(0, 0, 0, 0.04)',
+  display: 'flex',
+  alignItems: 'center',
+  gap: '10px'
+};
+
+const chipIconStyle = { fontSize: '1.15rem' };
+
+const chipLabelStyle = {
+  fontSize: '0.66rem',
+  textTransform: 'uppercase',
+  letterSpacing: '0.05em',
+  color: '#64748b',
+  fontWeight: 600
+};
+
+const chipValueStyle = {
+  fontSize: '1.05rem',
+  fontWeight: 700,
+  color: '#0f172a',
+  letterSpacing: '-0.02em'
 };

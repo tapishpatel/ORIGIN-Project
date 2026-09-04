@@ -62,6 +62,7 @@ async def fetch_weather_data(lat: float, lon: float) -> Dict[str, Any]:
             temps = hourly.get("temperature_2m", [])[:24]
             uvs = hourly.get("uv_index", [])[:24]
 
+            now = time.time()
             return {
                 "temperature": round(float(temp), 1),
                 "humidity": round(float(humidity), 1),
@@ -71,6 +72,10 @@ async def fetch_weather_data(lat: float, lon: float) -> Dict[str, Any]:
                 "condition_label": meta["label"],
                 "icon": meta["icon"],
                 "severity": meta["severity"],
+                "is_live": True,
+                "is_fallback": False,
+                "source": "Open-Meteo Live Weather API",
+                "fetched_at": now,
                 "hourly_forecast": [
                     {"time": h, "temp": t, "uv": u}
                     for h, t, u in zip(hours, temps, uvs)
@@ -78,15 +83,20 @@ async def fetch_weather_data(lat: float, lon: float) -> Dict[str, Any]:
             }
     except Exception as e:
         logger.error(f"Error fetching Open-Meteo weather for ({lat}, {lon}): {e}")
-        # Safe deterministic fallback
+        # Safe deterministic fallback with explicit metadata
         return {
             "temperature": 28.5,
             "humidity": 60.0,
             "uv_index": 6.2,
             "wind_speed": 10.5,
             "weather_code": 2,
-            "condition_label": "Partly cloudy",
+            "condition_label": "Partly cloudy (Estimate)",
             "icon": "CloudSun",
             "severity": "good",
+            "is_live": False,
+            "is_fallback": True,
+            "source": "Fallback Estimate (Open-Meteo Live Feed Unavailable)",
+            "fallback_reason": str(e),
+            "fetched_at": time.time(),
             "hourly_forecast": [],
         }

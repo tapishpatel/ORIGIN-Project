@@ -30,8 +30,8 @@ const request = async (endpoint, options = {}) => {
 };
 
 export const api = {
-  // Dashboard & Real-Time Data
-  getDashboard: (lat, lon, label) => {
+  // Dashboard & Real-Time Data with Fallback Simulation Flag
+  getDashboard: (lat, lon, label, forceFallback = false) => {
     let url = '/api/dashboard';
     const params = new URLSearchParams();
     if (lat !== undefined && lon !== undefined) {
@@ -39,6 +39,7 @@ export const api = {
       params.append('lon', lon);
     }
     if (label) params.append('label', label);
+    if (forceFallback) params.append('force_fallback', '1');
     const qs = params.toString();
     return request(qs ? `${url}?${qs}` : url);
   },
@@ -85,5 +86,12 @@ export const api = {
   triggerScheduler: () =>
     request('/api/scheduler/trigger', {
       method: 'POST',
+    }),
+
+  // Live Gmail SMTP Verified Test Dispatch
+  sendTestEmail: (recipient = 'tornovdutta@gmail.com') =>
+    request('/api/notifications/test-email', {
+      method: 'POST',
+      body: JSON.stringify({ recipient }),
     }),
 };

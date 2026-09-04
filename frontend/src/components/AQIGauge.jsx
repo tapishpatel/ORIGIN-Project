@@ -1,189 +1,129 @@
 import React from 'react';
-import { IconWind, IconAlertTriangle } from './Icons';
 
 export const AQIGauge = ({ aqiData }) => {
   const aqi = aqiData?.aqi ?? 0;
   const pm25 = aqiData?.pm2_5 ?? 0;
   const pm10 = aqiData?.pm10 ?? 0;
+  const no2 = aqiData?.nitrogen_dioxide ?? 0;
+  const o3 = aqiData?.ozone ?? 0;
   const category = aqiData?.category || 'Moderate';
-  const color = aqiData?.color || '#f59e0b';
-  const bgColor = aqiData?.bg_color || 'rgba(245, 158, 11, 0.15)';
-  const description = aqiData?.description || 'Air quality is acceptable for healthy individuals.';
+  const isFallback = Boolean(aqiData?.is_fallback || aqiData?.source === 'fallback');
 
-  // Arc calculations for SVG gauge
-  const radius = 80;
-  const circumference = Math.PI * radius; // Half circle
-  const progressPercent = Math.min(1, aqi / 300);
-  const strokeDashoffset = circumference - (progressPercent * circumference);
+  const currentAqi = Math.round(aqi);
+  const maxAqi = 300;
+  const clampedAqi = Math.min(maxAqi, Math.max(0, currentAqi));
+  const progressRatio = clampedAqi / maxAqi;
+  const halfCircumference = 251.2;
+  const strokeDashoffset = halfCircumference - (progressRatio * halfCircumference);
+
+  const categoryColor = currentAqi > 200 ? '#b91c1c' : currentAqi > 150 ? '#ef4444' : currentAqi > 100 ? '#f97316' : currentAqi > 50 ? '#f59e0b' : '#10b981';
 
   return (
-    <div className="glass-card aqi-card">
-      <div className="card-header">
-        <div className="header-title">
-          <IconWind size={18} color="#38bdf8" />
-          <span>Air Quality Index (AQI)</span>
+    <div className="premium-card" style={{ display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
+      <div>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '14px' }}>
+          <h2 style={{ fontSize: '0.95rem', fontWeight: 700, color: '#0f172a', margin: 0, letterSpacing: '-0.015em' }}>
+            Air Quality
+          </h2>
+          {isFallback ? (
+            <span style={{
+              fontSize: '0.66rem',
+              fontWeight: 700,
+              color: '#b91c1c',
+              background: '#fef2f2',
+              border: '1px solid #fecaca',
+              padding: '3px 9px',
+              borderRadius: '999px',
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '4px',
+              letterSpacing: '0.04em',
+              textTransform: 'uppercase'
+            }}>
+              Fallback
+            </span>
+          ) : (
+            <span style={{
+              fontSize: '0.66rem',
+              fontWeight: 700,
+              color: '#065f46',
+              background: '#ecfdf5',
+              padding: '3px 9px',
+              borderRadius: '999px',
+              border: '1px solid #a7f3d0',
+              letterSpacing: '0.04em',
+              textTransform: 'uppercase'
+            }}>
+              ● Live
+            </span>
+          )}
         </div>
-        <div className="category-pill" style={{ color: color, background: bgColor, border: `1px solid ${color}40` }}>
-          {category}
-        </div>
-      </div>
 
-      <div className="gauge-section">
-        <div className="gauge-container">
-          <svg className="gauge-svg" width="200" height="120" viewBox="0 0 200 120">
-            {/* Background Arc */}
+        <div style={{ textAlign: 'center', position: 'relative', margin: '6px 0 8px' }}>
+          <svg viewBox="0 0 200 110" style={{ width: '200px', height: 'auto', margin: '0 auto', display: 'block', overflow: 'visible' }}>
+            <defs>
+              <linearGradient id="aqiArcGrad" x1="0%" y1="0%" x2="100%" y2="0%">
+                <stop offset="0%" stopColor="#10b981" />
+                <stop offset="35%" stopColor="#f59e0b" />
+                <stop offset="70%" stopColor="#f97316" />
+                <stop offset="100%" stopColor="#ef4444" />
+              </linearGradient>
+            </defs>
             <path
               d="M 20 100 A 80 80 0 0 1 180 100"
               fill="none"
-              stroke="rgba(255, 255, 255, 0.08)"
-              strokeWidth="16"
+              stroke="#f1f5f9"
+              strokeWidth="14"
               strokeLinecap="round"
             />
-            {/* Value Arc */}
             <path
               d="M 20 100 A 80 80 0 0 1 180 100"
               fill="none"
-              stroke={color}
-              strokeWidth="16"
-              strokeLinecap="round"
-              strokeDasharray={circumference}
+              stroke="url(#aqiArcGrad)"
+              strokeWidth="14"
+              strokeDasharray={halfCircumference}
               strokeDashoffset={strokeDashoffset}
-              style={{ transition: 'stroke-dashoffset 0.8s ease-out, stroke 0.4s' }}
+              strokeLinecap="round"
+              style={{ transition: 'stroke-dashoffset 0.8s cubic-bezier(0.16, 1, 0.3, 1)' }}
             />
           </svg>
 
-          <div className="gauge-center-text">
-            <span className="aqi-number" style={{ color: color }}>{Math.round(aqi)}</span>
-            <span className="aqi-unit">US AQI</span>
+          <div style={{ marginTop: '-40px' }}>
+            <div style={{ fontSize: '2.4rem', fontWeight: 700, color: '#0f172a', lineHeight: 1, letterSpacing: '-0.035em' }}>
+              {currentAqi}
+            </div>
+            <div style={{ fontSize: '0.66rem', fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.08em', marginTop: '2px' }}>
+              US AQI
+            </div>
+            <div style={{ fontSize: '0.82rem', fontWeight: 600, color: categoryColor, marginTop: '4px' }}>
+              {category}
+            </div>
           </div>
         </div>
 
-        <p className="aqi-desc">{description}</p>
-      </div>
-
-      <div className="pollutant-row">
-        <div className="pollutant-box">
-          <div className="poll-name">PM 2.5</div>
-          <div className="poll-val-group">
-            <span className="poll-val">{pm25}</span>
-            <span className="poll-unit">µg/m³</span>
-          </div>
-          <div className="poll-status" style={{ color: pm25 > 60 ? '#ef4444' : pm25 > 35 ? '#f97316' : '#10b981' }}>
-            {pm25 > 60 ? 'Unhealthy' : pm25 > 35 ? 'Moderate' : 'Safe'}
-          </div>
-        </div>
-
-        <div className="pollutant-box">
-          <div className="poll-name">PM 10</div>
-          <div className="poll-val-group">
-            <span className="poll-val">{pm10}</span>
-            <span className="poll-unit">µg/m³</span>
-          </div>
-          <div className="poll-status" style={{ color: pm10 > 100 ? '#ef4444' : pm10 > 50 ? '#f97316' : '#10b981' }}>
-            {pm10 > 100 ? 'Elevated' : pm10 > 50 ? 'Moderate' : 'Safe'}
-          </div>
+        <div style={{
+          display: 'grid',
+          gridTemplateColumns: 'repeat(4, 1fr)',
+          gap: '6px',
+          textAlign: 'center',
+          marginTop: '18px',
+          paddingTop: '14px',
+          borderTop: '1px solid #f1f5f9'
+        }}>
+          <PollutantTile label="PM2.5" value={pm25} />
+          <PollutantTile label="PM10" value={pm10} />
+          <PollutantTile label="NO₂" value={no2} />
+          <PollutantTile label="O₃" value={o3} />
         </div>
       </div>
-
-      <style>{`
-        .aqi-card {
-          display: flex;
-          flex-direction: column;
-          justify-content: space-between;
-        }
-        .category-pill {
-          font-size: 0.75rem;
-          font-weight: 700;
-          padding: 3px 10px;
-          border-radius: var(--radius-full);
-        }
-        .gauge-section {
-          display: flex;
-          flex-direction: column;
-          align-items: center;
-          padding: 10px 0;
-        }
-        .gauge-container {
-          position: relative;
-          width: 200px;
-          height: 110px;
-          display: flex;
-          justify-content: center;
-        }
-        .gauge-svg {
-          overflow: visible;
-        }
-        .gauge-center-text {
-          position: absolute;
-          bottom: 10px;
-          display: flex;
-          flex-direction: column;
-          align-items: center;
-          line-height: 1;
-        }
-        .aqi-number {
-          font-family: var(--font-display);
-          font-size: 2.75rem;
-          font-weight: 800;
-        }
-        .aqi-unit {
-          font-size: 0.72rem;
-          font-weight: 600;
-          color: var(--text-muted);
-          text-transform: uppercase;
-          letter-spacing: 0.08em;
-          margin-top: 4px;
-        }
-        .aqi-desc {
-          font-size: 0.82rem;
-          color: var(--text-secondary);
-          text-align: center;
-          max-width: 320px;
-          margin-top: 8px;
-          line-height: 1.4;
-        }
-        .pollutant-row {
-          display: grid;
-          grid-template-columns: 1fr 1fr;
-          gap: 12px;
-          border-top: 1px solid var(--border-subtle);
-          padding-top: 18px;
-        }
-        .pollutant-box {
-          background: rgba(255, 255, 255, 0.03);
-          border: 1px solid var(--border-subtle);
-          border-radius: var(--radius-md);
-          padding: 12px;
-        }
-        .poll-name {
-          font-size: 0.75rem;
-          font-weight: 600;
-          color: var(--text-muted);
-          text-transform: uppercase;
-          letter-spacing: 0.05em;
-        }
-        .poll-val-group {
-          display: flex;
-          align-items: baseline;
-          gap: 4px;
-          margin: 4px 0;
-        }
-        .poll-val {
-          font-family: var(--font-display);
-          font-size: 1.35rem;
-          font-weight: 700;
-          color: var(--text-primary);
-        }
-        .poll-unit {
-          font-size: 0.72rem;
-          color: var(--text-muted);
-        }
-        .poll-status {
-          font-size: 0.72rem;
-          font-weight: 700;
-          text-transform: uppercase;
-        }
-      `}</style>
     </div>
   );
 };
+
+const PollutantTile = ({ label, value }) => (
+  <div style={{ background: '#f8fafc', padding: '8px 4px', borderRadius: '10px', border: '1px solid #f1f5f9' }}>
+    <div style={{ fontSize: '0.66rem', color: '#64748b', fontWeight: 600 }}>{label}</div>
+    <div style={{ fontSize: '0.95rem', fontWeight: 700, color: '#0f172a', letterSpacing: '-0.02em' }}>{Math.round(value)}</div>
+    <div style={{ fontSize: '0.58rem', color: '#94a3b8' }}>µg/m³</div>
+  </div>
+);

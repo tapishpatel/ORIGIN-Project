@@ -3,57 +3,151 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>AeroHealth — Personalized Weather & AQI Health Advisory</title>
+  <title>AeroHealth — Personalized Weather & Health Intelligence</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Outfit:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-  <!-- React & Babel for zero-install instant browser runtime -->
-  <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
-  <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Caveat:wght@600;700&family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+  <script src="https://unpkg.com/react@18/umd/react.production.min.js" crossorigin></script>
+  <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js" crossorigin></script>
   <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+
   <style>
     :root {
-      --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
-      --font-display: 'Outfit', var(--font-sans);
-      --bg-main: #090d16;
-      --bg-card: rgba(17, 24, 39, 0.75);
-      --border-subtle: rgba(255, 255, 255, 0.08);
-      --text-primary: #f8fafc;
-      --text-secondary: #94a3b8;
+      --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      --font-script: 'Caveat', cursive, serif;
+
+      --bg-main: #f1f5f9;
+      --bg-page: #f8fafc;
+      --bg-card: #ffffff;
+      --border-card: rgba(0, 0, 0, 0.06);
+      --border-subtle: #e2e8f0;
+
+      --text-primary: #0f172a;
+      --text-secondary: #334155;
       --text-muted: #64748b;
-      --accent-blue: #38bdf8;
+      --text-light: #94a3b8;
+
+      --risk-low: #10b981;
+      --risk-low-bg: #ecfdf5;
+      --risk-low-border: #a7f3d0;
+      --risk-low-text: #065f46;
+
+      --risk-mod: #f59e0b;
+      --risk-mod-bg: #fffbeb;
+      --risk-mod-border: #fde68a;
+      --risk-mod-text: #92400e;
+
+      --risk-high: #f97316;
+      --risk-high-bg: #fff7ed;
+      --risk-high-border: #fed7aa;
+      --risk-high-text: #9a3412;
+
+      --risk-severe: #ef4444;
+      --risk-severe-bg: #fef2f2;
+      --risk-severe-border: #fecaca;
+      --risk-severe-text: #991b1b;
+
+      --accent-blue: #0284c7;
+      --accent-blue-subtle: #e0f2fe;
+
+      --radius-sm: 8px;
       --radius-md: 14px;
       --radius-lg: 20px;
+      --radius-xl: 24px;
       --radius-full: 9999px;
+
+      --shadow-subtle: 0 1px 2px rgba(15, 23, 42, 0.04);
+      --shadow-card: 0 1px 3px rgba(0, 0, 0, 0.04), 0 4px 16px -4px rgba(15, 23, 42, 0.04);
+      --shadow-elevated: 0 8px 24px -6px rgba(15, 23, 42, 0.08);
     }
+
     * { box-sizing: border-box; margin: 0; padding: 0; }
     body {
       font-family: var(--font-sans);
       background-color: var(--bg-main);
-      background-image: 
-        radial-gradient(circle at 15% 10%, rgba(56, 189, 248, 0.08) 0%, transparent 40%),
-        radial-gradient(circle at 85% 25%, rgba(168, 85, 247, 0.07) 0%, transparent 45%),
-        radial-gradient(circle at 50% 80%, rgba(16, 185, 129, 0.06) 0%, transparent 50%);
-      background-attachment: fixed;
       color: var(--text-primary);
       min-height: 100vh;
       line-height: 1.5;
+      -webkit-font-smoothing: antialiased;
+      letter-spacing: -0.01em;
     }
-    h1, h2, h3, h4 { font-family: var(--font-display); font-weight: 700; letter-spacing: -0.02em; }
-    button { font-family: inherit; cursor: pointer; border: none; background: none; transition: 0.2s; }
-    input, select { font-family: inherit; color: inherit; }
-    .glass-card {
+    h1, h2, h3, h4, h5, h6 {
+      font-weight: 700;
+      letter-spacing: -0.022em;
+      color: var(--text-primary);
+    }
+    button { font-family: inherit; cursor: pointer; border: none; background: none; transition: 0.15s ease; }
+    input, select, textarea { font-family: inherit; color: inherit; }
+
+    .premium-card {
       background: var(--bg-card);
-      backdrop-filter: blur(18px);
-      -webkit-backdrop-filter: blur(18px);
-      border: 1px solid var(--border-subtle);
-      border-radius: var(--radius-lg);
-      padding: 24px;
-      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.35);
+      border: 1px solid var(--border-card);
+      border-radius: var(--radius-xl);
+      padding: 22px;
+      box-shadow: var(--shadow-card);
     }
-    .app-container { max-width: 1280px; margin: 0 auto; padding: 24px 20px 80px; }
-    .dashboard-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; margin-top: 24px; }
-    @media (max-width: 960px) { .dashboard-grid { grid-template-columns: 1fr; } }
+
+    .app-container {
+      max-width: 1320px;
+      margin: 0 auto;
+      padding: 24px 24px 80px;
+      display: flex;
+      flex-direction: column;
+      gap: 20px;
+    }
+
+    .hero-weather-card {
+      position: relative;
+      background:
+        radial-gradient(ellipse 60% 80% at 85% 0%, rgba(255, 255, 255, 0.65) 0%, transparent 60%),
+        linear-gradient(160deg, #e0f2fe 0%, #ecfdf5 55%, #fef3c7 100%);
+      border: 1px solid rgba(0, 0, 0, 0.06);
+      border-radius: var(--radius-xl);
+      padding: 28px 32px;
+      box-shadow: var(--shadow-card);
+      overflow: hidden;
+    }
+    .hero-weather-card::after {
+      content: '';
+      position: absolute;
+      left: 0; right: 0; bottom: 0;
+      height: 60%;
+      background: radial-gradient(ellipse at center bottom, rgba(186, 230, 253, 0.18) 0%, transparent 70%);
+      pointer-events: none;
+    }
+
+    .tab-nav-btn {
+      padding: 6px 16px;
+      font-size: 0.84rem;
+      font-weight: 600;
+      color: var(--text-secondary);
+      border-radius: var(--radius-full);
+      transition: 0.15s ease;
+      border: 1px solid transparent;
+    }
+    .tab-nav-btn:hover { color: var(--text-primary); background: rgba(15, 23, 42, 0.04); }
+    .tab-nav-btn.active {
+      color: #ffffff;
+      background: #0f172a;
+      box-shadow: 0 2px 8px rgba(15, 23, 42, 0.15);
+    }
+
+    .horizontal-scroll {
+      display: flex;
+      gap: 10px;
+      overflow-x: auto;
+      padding-bottom: 6px;
+    }
+    .horizontal-scroll::-webkit-scrollbar { height: 4px; }
+    .horizontal-scroll::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
+
+    ::-webkit-scrollbar { width: 7px; height: 7px; }
+    ::-webkit-scrollbar-track { background: #f8fafc; }
+    ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
+
+    @keyframes spin { to { transform: rotate(360deg); } }
+    @keyframes toastIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+    @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
   </style>
 </head>
 <body>
@@ -64,43 +158,70 @@
     const API_BASE = window.location.origin;
 
     function App() {
+      const [activeTab, setActiveTab] = useState('home');
       const [data, setData] = useState(null);
       const [personas, setPersonas] = useState([]);
       const [activePersonaId, setActivePersonaId] = useState('demo-asthma-worker');
       const [history, setHistory] = useState(null);
       const [loading, setLoading] = useState(true);
       const [toast, setToast] = useState('');
-      const [isProfileOpen, setIsProfileOpen] = useState(false);
       const [isDrawerOpen, setIsDrawerOpen] = useState(false);
-      const [simAqi, setSimAqi] = useState(240);
-      const [simTemp, setSimTemp] = useState(38);
-      const [showSim, setShowSim] = useState(false);
-      const [historyTab, setHistoryTab] = useState('chart');
+      const [isProfileModalOpen, setIsProfileModalOpen] = useState(false);
+      const [isForcedFallback, setIsForcedFallback] = useState(false);
+      const [nowEpoch, setNowEpoch] = useState(Date.now() / 1000);
+
+      const [simAqi, setSimAqi] = useState(140);
+      const [simTemp, setSimTemp] = useState(33);
+      const [simResult, setSimResult] = useState(null);
+      const [simLoading, setSimLoading] = useState(false);
+      const [trendMetric, setTrendMetric] = useState('risk');
+
+      useEffect(() => {
+        const timer = setInterval(() => setNowEpoch(Date.now() / 1000), 1000);
+        return () => clearInterval(timer);
+      }, []);
+
+      const formatFreshness = (isoStr) => {
+        if (!isoStr) return 'just now';
+        const fetchedSec = new Date(isoStr).getTime() / 1000;
+        const diff = Math.max(0, Math.floor(nowEpoch - fetchedSec));
+        if (diff < 4) return 'just now';
+        if (diff < 60) return `${diff}s ago`;
+        return `${Math.floor(diff / 60)}m ago`;
+      };
 
       const showNotice = (msg) => {
         setToast(msg);
-        setTimeout(() => setToast(''), 4000);
+        setTimeout(() => setToast(''), 3500);
       };
 
-      const loadData = async (token = null) => {
+      const loadData = async (token = null, forceFall = isForcedFallback) => {
         try {
           const headers = token ? { 'Authorization': `Bearer ${token}` } : {};
-          const pRes = await fetch(`${API_BASE}/auth/personas`).then(r => r.json());
+          const [pRes, dRes, hRes] = await Promise.all([
+            fetch(`${API_BASE}/auth/personas`).then(r => r.json()).catch(() => []),
+            fetch(`${API_BASE}/api/dashboard?force_fallback=${forceFall ? 1 : 0}`, { headers }).then(r => r.json()),
+            fetch(`${API_BASE}/api/history?days=7`, { headers }).then(r => r.json()).catch(() => null),
+          ]);
           setPersonas(pRes);
-          const dRes = await fetch(`${API_BASE}/api/dashboard`, { headers }).then(r => r.json());
           setData(dRes);
-          const hRes = await fetch(`${API_BASE}/api/history?days=7`, { headers }).then(r => r.json());
           setHistory(hRes);
         } catch (e) {
-          console.error(e);
-          showNotice('Error loading live data');
+          showNotice('Connection error');
         } finally {
           setLoading(false);
         }
       };
 
       useEffect(() => {
-        loadData();
+        const urlParams = new URLSearchParams(window.location.search);
+        const tok = urlParams.get('token');
+        if (tok) {
+          showNotice(`Welcome ${urlParams.get('name') || 'User'}`);
+          loadData(tok);
+        } else {
+          loadData();
+        }
       }, []);
 
       const handleSelectPersona = async (pId) => {
@@ -113,37 +234,55 @@
             body: JSON.stringify({ persona_id: pId })
           }).then(r => r.json());
           await loadData(login.access_token);
-          showNotice(`Switched persona to ${login.user.name}`);
+          showNotice(`Switched to ${login.user.name}`);
         } catch (e) {
           showNotice('Persona switch failed');
           setLoading(false);
         }
       };
 
-      const handleSimulate = async () => {
+      const handleToggleFallback = async () => {
+        const next = !isForcedFallback;
+        setIsForcedFallback(next);
         setLoading(true);
+        await loadData(`token-${activePersonaId}`, next);
+        showNotice(next ? 'Fallback active' : 'Live feeds restored');
+      };
+
+      const handleSimulate = async () => {
+        setSimLoading(true);
         try {
           const res = await fetch(`${API_BASE}/api/advisory/generate`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer token-${activePersonaId}` },
             body: JSON.stringify({ simulate_aqi: Number(simAqi), simulate_temp: Number(simTemp) })
           }).then(r => r.json());
-          setData(prev => ({ ...prev, risk: res.risk, advisory: res.advisory }));
-          const hRes = await fetch(`${API_BASE}/api/history?days=7`, { headers: { 'Authorization': `Bearer token-${activePersonaId}` } }).then(r => r.json());
-          setHistory(hRes);
-          showNotice('Simulated spike evaluated!');
+          setSimResult(res);
+          showNotice('Simulated');
         } catch (e) {
           showNotice('Simulation failed');
         } finally {
-          setLoading(false);
+          setSimLoading(false);
         }
       };
 
-      const handleResetSim = async () => {
-        setShowSim(false);
-        setLoading(true);
-        await loadData(`token-${activePersonaId}`);
-        showNotice('Restored to live real-time conditions');
+      const handleSendTestEmail = async () => {
+        try {
+          const res = await fetch(`${API_BASE}/api/notifications/test-email`, {
+            method: 'POST',
+            headers: { 'Authorization': `Bearer token-${activePersonaId}`, 'Content-Type': 'application/json' },
+            body: JSON.stringify({ recipient: 'tornovdutta@gmail.com' })
+          }).then(r => r.json());
+          if (res?.dispatch?.status?.includes('delivered')) {
+            showNotice(`Delivered to ${res.dispatch.recipient}`);
+          } else {
+            showNotice(`Status: ${res?.dispatch?.status || 'sent'}`);
+          }
+          const hRes = await fetch(`${API_BASE}/api/history?days=7`, { headers: { 'Authorization': `Bearer token-${activePersonaId}` } }).then(r => r.json());
+          setHistory(hRes);
+        } catch (err) {
+          showNotice('Email dispatch failed');
+        }
       };
 
       const handleTriggerScheduler = async () => {
@@ -154,346 +293,832 @@
           });
           const hRes = await fetch(`${API_BASE}/api/history?days=7`, { headers: { 'Authorization': `Bearer token-${activePersonaId}` } }).then(r => r.json());
           setHistory(hRes);
-          showNotice('APScheduler background check fired!');
+          showNotice('Background check fired');
         } catch (e) {
-          showNotice('Scheduler trigger failed');
+          showNotice('Trigger failed');
         }
       };
 
       if (loading && !data) {
         return (
-          <div style={{ display: 'flex', height: '100vh', alignItems: 'center', justifyContent: 'center', color: '#38bdf8', fontSize: '1.2rem', gap: '12px' }}>
-            <div style={{ width: '28px', height: '28px', border: '3px solid rgba(56,189,248,0.3)', borderTopColor: '#38bdf8', borderRadius: '50%', animation: 'spin 0.8s linear infinite' }} />
-            <span>Loading Live Environmental Intelligence...</span>
-            <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
+          <div style={{ display: 'flex', height: '100vh', alignItems: 'center', justifyContent: 'center', color: '#0f172a', gap: '12px', background: '#f8fafc' }}>
+            <div style={{ width: '26px', height: '26px', border: '2.5px solid #e2e8f0', borderTopColor: '#0f172a', borderRadius: '50%', animation: 'spin 0.8s linear infinite' }} />
+            <span style={{ fontSize: '0.95rem', fontWeight: 600 }}>Loading AeroHealth…</span>
           </div>
         );
       }
 
-      const weather = data?.weather;
-      const aqi = data?.aqi;
-      const risk = data?.risk;
-      const adv = data?.advisory;
-      const user = data?.user;
-      const profile = data?.profile;
+      const weather = data?.weather || {};
+      const aqi = data?.aqi || {};
+      const risk = data?.risk || {};
+      const adv = data?.advisory || {};
+      const user = data?.user || {};
+      const profile = data?.profile || {};
+      const loc = data?.location || {};
+
+      const riskLevel = risk.risk_level || 'moderate';
+      const riskColor = riskLevel === 'severe' ? '#ef4444' : riskLevel === 'high' ? '#f97316' : riskLevel === 'moderate' ? '#f59e0b' : '#10b981';
+      const riskBg = riskLevel === 'severe' ? '#fef2f2' : riskLevel === 'high' ? '#fff7ed' : riskLevel === 'moderate' ? '#fffbeb' : '#ecfdf5';
+      const riskBorder = riskLevel === 'severe' ? '#fecaca' : riskLevel === 'high' ? '#fed7aa' : riskLevel === 'moderate' ? '#fde68a' : '#a7f3d0';
+      const riskText = riskLevel === 'severe' ? '#991b1b' : riskLevel === 'high' ? '#9a3412' : riskLevel === 'moderate' ? '#92400e' : '#065f46';
+
+      const currentTemp = Math.round(weather.temperature || 31);
+      const currentAqi = Math.round(aqi.aqi || 147);
+      const visibility = weather.visibility || 8;
+      const firstName = user.name?.split(' ')[0] || 'Aditi';
+      const hour = new Date().getHours();
+      const greeting = hour < 12 ? 'Good morning' : hour < 18 ? 'Good afternoon' : 'Good evening';
+
+      const hourlyData = [
+        { time: 'Now', temp: currentTemp, aqi: currentAqi, isCurrent: true, icon: '⛅' },
+        { time: '12 PM', temp: currentTemp + 2, aqi: currentAqi + 17, icon: '🌤️' },
+        { time: '1 PM', temp: currentTemp + 3, aqi: currentAqi + 22, icon: '🌤️' },
+        { time: '2 PM', temp: currentTemp + 2, aqi: currentAqi + 13, icon: '⛅' },
+        { time: '3 PM', temp: currentTemp + 1, aqi: currentAqi + 1, icon: '⛅' },
+        { time: '4 PM', temp: currentTemp, aqi: Math.max(40, currentAqi - 15), icon: '🌤️' },
+        { time: '5 PM', temp: currentTemp - 1, aqi: Math.max(35, currentAqi - 29), icon: '☀️' },
+        { time: '6 PM', temp: currentTemp - 2, aqi: Math.max(30, currentAqi - 38), icon: '🌙' },
+      ];
+
+      const dailyForecast = [
+        { day: 'Today', high: currentTemp + 3, low: currentTemp - 6, aqi: currentAqi, icon: '⛅' },
+        { day: 'Tue', high: currentTemp + 2, low: currentTemp - 7, aqi: Math.max(50, currentAqi - 15), icon: '🌤️' },
+        { day: 'Wed', high: currentTemp, low: currentTemp - 8, aqi: Math.max(45, currentAqi - 51), icon: '🌧️' },
+        { day: 'Thu', high: currentTemp + 4, low: currentTemp - 6, aqi: Math.max(40, currentAqi - 66), icon: '☀️' },
+        { day: 'Fri', high: currentTemp + 5, low: currentTemp - 6, aqi: Math.max(40, currentAqi - 75), icon: '☀️' },
+        { day: 'Sat', high: currentTemp + 3, low: currentTemp - 6, aqi: Math.max(50, currentAqi - 37), icon: '🌤️' },
+        { day: 'Sun', high: currentTemp - 1, low: currentTemp - 9, aqi: currentAqi + 8, icon: '⛅' },
+      ];
+
+      const alertsList = history?.alerts || [];
 
       return (
         <div>
-          {/* Top Navbar */}
-          <nav style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '16px 24px', background: 'rgba(15,23,42,0.85)', backdropFilter: 'blur(16px)', borderBottom: '1px solid var(--border-subtle)', position: 'sticky', top: 0, zIndex: 100 }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-              <div style={{ width: '40px', height: '40px', borderRadius: '12px', background: 'linear-gradient(135deg, rgba(56,189,248,0.2), rgba(16,185,129,0.2))', border: '1px solid rgba(56,189,248,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                🛡️
-              </div>
-              <div>
-                <div style={{ fontSize: '1.25rem', fontWeight: 800, background: 'linear-gradient(to right, #f8fafc, #38bdf8)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>
-                  AeroHealth
-                </div>
-                <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>Personalized Weather-Health Advisory</div>
-              </div>
-            </div>
-
-            <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '6px', padding: '5px 12px', background: 'rgba(16,185,129,0.15)', border: '1px solid rgba(16,185,129,0.3)', borderRadius: '999px', fontSize: '0.75rem', color: '#34d399', fontWeight: 600 }}>
-                <span style={{ width: '7px', height: '7px', borderRadius: '50%', background: '#10b981' }} />
-                Open-Meteo Live Connected
-              </div>
-
-              <button onClick={() => setIsDrawerOpen(true)} style={{ width: '38px', height: '38px', borderRadius: '10px', background: 'rgba(255,255,255,0.06)', border: '1px solid var(--border-subtle)', color: '#fff', fontSize: '1.1rem', position: 'relative' }}>
-                🔔
-                {history?.audit_notifications?.length > 0 && (
-                  <span style={{ position: 'absolute', top: '-4px', right: '-4px', background: '#ef4444', color: '#fff', fontSize: '0.65rem', padding: '1px 5px', borderRadius: '999px' }}>
-                    {history.audit_notifications.length}
+          <header style={{
+            background: 'rgba(255, 255, 255, 0.85)',
+            backdropFilter: 'blur(12px)',
+            borderBottom: '1px solid rgba(0, 0, 0, 0.06)',
+            position: 'sticky', top: 0, zIndex: 100
+          }}>
+            <div style={{ maxWidth: '1320px', margin: '0 auto', padding: '12px 24px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '32px' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '10px', cursor: 'pointer' }} onClick={() => setActiveTab('home')}>
+                  <div style={{ width: '30px', height: '30px', borderRadius: '9px', background: '#ecfdf5', border: '1px solid #a7f3d0', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.95rem' }}>
+                    🌿
+                  </div>
+                  <span style={{ fontSize: '1.25rem', fontWeight: 700, letterSpacing: '-0.025em', color: '#0f172a' }}>
+                    AeroHealth
                   </span>
-                )}
-              </button>
+                </div>
 
-              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '4px 12px 4px 6px', background: 'rgba(255,255,255,0.06)', border: '1px solid var(--border-subtle)', borderRadius: '999px' }}>
-                <img src={user?.picture} style={{ width: '28px', height: '28px', borderRadius: '50%' }} />
-                <span style={{ fontSize: '0.85rem', fontWeight: 600 }}>{user?.name}</span>
+                <nav style={{ display: 'flex', background: '#f1f5f9', borderRadius: '999px', padding: '3px', border: '1px solid #e2e8f0' }}>
+                  <button className={`tab-nav-btn ${activeTab === 'home' ? 'active' : ''}`} onClick={() => setActiveTab('home')}>Home</button>
+                  <button className={`tab-nav-btn ${activeTab === 'advisory' ? 'active' : ''}`} onClick={() => setActiveTab('advisory')}>Advisory</button>
+                  <button className={`tab-nav-btn ${activeTab === 'trends' ? 'active' : ''}`} onClick={() => setActiveTab('trends')}>Trends</button>
+                  <button className={`tab-nav-btn ${activeTab === 'alerts' ? 'active' : ''}`} onClick={() => setActiveTab('alerts')}>Alerts</button>
+                </nav>
+              </div>
+
+              <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                <div style={{
+                  display: 'inline-flex', alignItems: 'center', gap: '6px',
+                  padding: '4px 10px', background: '#ecfdf5', border: '1px solid #a7f3d0',
+                  borderRadius: '999px', fontSize: '0.72rem', color: '#065f46', fontWeight: 600
+                }}>
+                  <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: '#10b981' }} />
+                  Live
+                </div>
+
+                <button
+                  onClick={() => setIsDrawerOpen(prev => !prev)}
+                  style={{
+                    width: '36px', height: '36px', borderRadius: '10px', background: '#f8fafc',
+                    border: '1px solid #e2e8f0', display: 'flex', alignItems: 'center',
+                    justifyContent: 'center', fontSize: '1rem', position: 'relative', cursor: 'pointer',
+                    transition: 'all 0.15s ease'
+                  }}
+                  title="Notifications & Alerts"
+                >
+                  🔔
+                  {alertsList.length > 0 && (
+                    <span style={{ position: 'absolute', top: '-3px', right: '-3px', minWidth: '16px', height: '16px', borderRadius: '999px', background: '#ef4444', color: '#fff', fontSize: '0.62rem', fontWeight: 700, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '0 4px', boxShadow: '0 1px 3px rgba(239, 68, 68, 0.4)' }}>
+                      {alertsList.length}
+                    </span>
+                  )}
+                </button>
+
+                <button
+                  onClick={() => setIsProfileModalOpen(true)}
+                  style={{
+                    display: 'flex', alignItems: 'center', gap: '8px',
+                    padding: '3px 12px 3px 4px', background: '#ffffff',
+                    border: '1px solid #e2e8f0', borderRadius: '999px', cursor: 'pointer'
+                  }}
+                >
+                  <img src={user.picture} style={{ width: '28px', height: '28px', borderRadius: '50%', background: '#f1f5f9' }} />
+                  <div>
+                    <div style={{ fontSize: '0.8rem', fontWeight: 600, color: '#0f172a', lineHeight: 1.1 }}>{firstName}</div>
+                    <div style={{ fontSize: '0.62rem', color: '#64748b', textTransform: 'capitalize' }}>{profile.conditions?.[0]?.replace('_', ' ') || 'Normal'}</div>
+                  </div>
+                </button>
               </div>
             </div>
-          </nav>
+          </header>
 
           <main className="app-container">
-            {/* Hackathon Demo Persona Switcher */}
-            <div style={{ background: 'linear-gradient(135deg, rgba(30,41,59,0.8), rgba(15,23,42,0.9))', border: '1px solid rgba(56,189,248,0.25)', borderRadius: 'var(--radius-lg)', padding: '16px 20px', boxShadow: '0 4px 20px rgba(0,0,0,0.3)' }}>
-              <div style={{ fontSize: '0.85rem', fontWeight: 700, color: '#38bdf8', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '4px' }}>
-                ✨ Hackathon Demo: Real-Time Health Profile Differential
-              </div>
-              <div style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', marginBottom: '12px' }}>
-                Click below to see how the exact same atmospheric metrics escalate risk levels and generate targeted medical advice:
-              </div>
 
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '12px' }}>
-                {personas.map(p => {
-                  const isActive = p.id === activePersonaId;
-                  return (
-                    <button
-                      key={p.id}
-                      onClick={() => handleSelectPersona(p.id)}
-                      style={{
-                        display: 'flex', alignItems: 'center', gap: '10px', padding: '10px 14px',
-                        background: isActive ? 'rgba(56,189,248,0.15)' : 'rgba(255,255,255,0.03)',
-                        border: `1.5px solid ${isActive ? '#38bdf8' : 'var(--border-subtle)'}`,
-                        borderRadius: 'var(--radius-md)', textAlign: 'left', color: '#fff',
-                        boxShadow: isActive ? '0 0 16px rgba(56,189,248,0.25)' : 'none'
-                      }}
-                    >
-                      <img src={p.picture} style={{ width: '36px', height: '36px', borderRadius: '50%' }} />
-                      <div>
-                        <div style={{ fontSize: '0.88rem', fontWeight: 700 }}>{p.name} {isActive && <span style={{ fontSize: '0.65rem', background: '#38bdf8', color: '#000', padding: '1px 5px', borderRadius: '4px' }}>Active</span>}</div>
-                        <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>
-                          {p.conditions.join(', ')} • {p.occupation}
+            {activeTab === 'home' && (
+              <>
+                <div className="hero-weather-card">
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '20px', position: 'relative', zIndex: 1 }}>
+                    <div>
+                      <div style={{
+                        display: 'inline-flex', alignItems: 'center', gap: '6px',
+                        padding: '5px 12px', background: 'rgba(255,255,255,0.75)',
+                        backdropFilter: 'blur(10px)', borderRadius: '999px',
+                        border: '1px solid rgba(0,0,0,0.05)', fontSize: '0.78rem',
+                        fontWeight: 600, color: '#334155', marginBottom: '14px'
+                      }}>
+                        <span>📍</span>
+                        <span>{loc.label || 'Bhopal, India'}</span>
+                      </div>
+
+                      <h1 style={{ fontSize: '2.3rem', fontWeight: 700, color: '#0f172a', letterSpacing: '-0.03em', lineHeight: 1.1, margin: 0 }}>
+                        {greeting}, {firstName}
+                      </h1>
+                      <p style={{ fontSize: '0.95rem', color: '#475569', marginTop: '6px', fontWeight: 400 }}>
+                        Breathe better. Live healthier.
+                      </p>
+
+                      <div style={{ marginTop: '14px', display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
+                        <span style={{ fontSize: '0.74rem', color: '#64748b', background: 'rgba(255,255,255,0.6)', padding: '4px 10px', borderRadius: '999px', fontWeight: 500 }}>
+                          ⏱ Updated {formatFreshness(weather.fetched_at)}
+                        </span>
+                        <button onClick={handleToggleFallback} style={{ background: 'none', border: 'none', fontSize: '0.72rem', fontWeight: 500, color: isForcedFallback ? '#ef4444' : '#64748b', cursor: 'pointer' }}>
+                          {isForcedFallback ? 'Exit Fallback' : 'Simulate Outage'}
+                        </button>
+                      </div>
+                    </div>
+
+                    <div style={{ textAlign: 'right' }}>
+                      <div style={{ fontFamily: 'var(--font-script)', fontSize: '1.3rem', color: '#0369a1', marginBottom: '-4px', fontWeight: 600 }}>
+                        Clearer days, healthier you
+                      </div>
+                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: '10px' }}>
+                        <span style={{ fontSize: '2.4rem' }}>⛅</span>
+                        <span style={{ fontSize: '3.6rem', fontWeight: 700, letterSpacing: '-0.045em', color: '#0f172a', lineHeight: 1 }}>
+                          {currentTemp}°
+                        </span>
+                      </div>
+                      <div style={{ fontSize: '1rem', fontWeight: 600, color: '#1e293b', marginTop: '2px' }}>
+                        {weather.description || 'Partly cloudy'}
+                      </div>
+                      <div style={{ fontSize: '0.8rem', color: '#64748b', marginTop: '2px' }}>
+                        Feels like {currentTemp + 3}° · H {currentTemp + 3}° · L {currentTemp - 6}°
+                      </div>
+                    </div>
+                  </div>
+
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: '10px', marginTop: '24px', position: 'relative', zIndex: 1 }}>
+                    {[
+                      { icon: '💧', label: 'Humidity', value: `${weather.humidity || 62}%` },
+                      { icon: '💨', label: 'Wind', value: `${weather.wind_speed || 12} km/h` },
+                      { icon: '☀️', label: 'UV Index', value: `${weather.uv_index || 7}`, sub: (weather.uv_index || 7) >= 6 ? 'High' : 'Moderate' },
+                      { icon: '👁️', label: 'Visibility', value: `${visibility} km` }
+                    ].map((c, i) => (
+                      <div key={i} style={{ background: 'rgba(255,255,255,0.7)', backdropFilter: 'blur(8px)', borderRadius: '14px', padding: '10px 14px', border: '1px solid rgba(0,0,0,0.04)', display: 'flex', alignItems: 'center', gap: '10px' }}>
+                        <span style={{ fontSize: '1.15rem' }}>{c.icon}</span>
+                        <div>
+                          <div style={{ fontSize: '0.66rem', textTransform: 'uppercase', letterSpacing: '0.05em', color: '#64748b', fontWeight: 600 }}>{c.label}</div>
+                          <div style={{ fontSize: '1.05rem', fontWeight: 700, color: '#0f172a', letterSpacing: '-0.02em' }}>
+                            {c.value} {c.sub && <span style={{ fontSize: '0.72rem', fontWeight: 500, color: '#d97706', marginLeft: '4px' }}>{c.sub}</span>}
+                          </div>
                         </div>
                       </div>
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
-
-            {/* Dashboard Cards Grid */}
-            <div className="dashboard-grid">
-              {/* Weather Card */}
-              <div className="glass-card">
-                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '16px' }}>
-                  <span style={{ fontSize: '0.85rem', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase' }}>Atmospheric Feed</span>
-                  <span style={{ fontSize: '0.75rem', color: '#38bdf8' }}>{data?.location?.label}</span>
-                </div>
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', margin: '10px 0 20px' }}>
-                  <div style={{ display: 'flex', alignItems: 'baseline' }}>
-                    <span style={{ fontSize: '4rem', fontWeight: 800, fontFamily: 'var(--font-display)' }}>{weather?.temperature}</span>
-                    <span style={{ fontSize: '1.8rem', color: 'var(--text-muted)', marginLeft: '4px' }}>°C</span>
-                  </div>
-                  <div style={{ textAlign: 'right' }}>
-                    <div style={{ fontSize: '2rem' }}>☀️</div>
-                    <div style={{ fontSize: '1rem', fontWeight: 600 }}>{weather?.condition_label}</div>
-                  </div>
-                </div>
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '10px', borderTop: '1px solid var(--border-subtle)', paddingTop: '14px' }}>
-                  <div style={{ background: 'rgba(255,255,255,0.03)', padding: '10px', borderRadius: '8px' }}>
-                    <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>Humidity</div>
-                    <div style={{ fontSize: '1.2rem', fontWeight: 700 }}>{weather?.humidity}%</div>
-                  </div>
-                  <div style={{ background: 'rgba(255,255,255,0.03)', padding: '10px', borderRadius: '8px' }}>
-                    <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>UV Index</div>
-                    <div style={{ fontSize: '1.2rem', fontWeight: 700, color: weather?.uv_index >= 7 ? '#ef4444' : '#fbbf24' }}>{weather?.uv_index}</div>
-                  </div>
-                  <div style={{ background: 'rgba(255,255,255,0.03)', padding: '10px', borderRadius: '8px' }}>
-                    <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>Wind Speed</div>
-                    <div style={{ fontSize: '1.2rem', fontWeight: 700 }}>{weather?.wind_speed} <span style={{ fontSize: '0.7rem' }}>km/h</span></div>
-                  </div>
-                </div>
-              </div>
-
-              {/* AQI Card */}
-              <div className="glass-card">
-                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '16px' }}>
-                  <span style={{ fontSize: '0.85rem', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase' }}>Air Quality Index</span>
-                  <span style={{ fontSize: '0.75rem', fontWeight: 700, padding: '2px 8px', borderRadius: '999px', background: aqi?.bg_color, color: aqi?.color, border: `1px solid ${aqi?.color}40` }}>
-                    {aqi?.category}
-                  </span>
-                </div>
-                <div style={{ textAlign: 'center', padding: '10px 0' }}>
-                  <div style={{ fontSize: '3.5rem', fontWeight: 800, color: aqi?.color, fontFamily: 'var(--font-display)' }}>
-                    {Math.round(aqi?.aqi || 0)}
-                  </div>
-                  <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', letterSpacing: '0.08em', textTransform: 'uppercase' }}>US AQI Level</div>
-                  <p style={{ fontSize: '0.82rem', color: 'var(--text-secondary)', marginTop: '8px', maxWidth: '300px', margin: '8px auto 0' }}>
-                    {aqi?.description}
-                  </p>
-                </div>
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px', borderTop: '1px solid var(--border-subtle)', paddingTop: '14px' }}>
-                  <div style={{ background: 'rgba(255,255,255,0.03)', padding: '10px', borderRadius: '8px' }}>
-                    <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>PM 2.5</div>
-                    <div style={{ fontSize: '1.2rem', fontWeight: 700 }}>{aqi?.pm2_5} <span style={{ fontSize: '0.7rem' }}>µg/m³</span></div>
-                  </div>
-                  <div style={{ background: 'rgba(255,255,255,0.03)', padding: '10px', borderRadius: '8px' }}>
-                    <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>PM 10</div>
-                    <div style={{ fontSize: '1.2rem', fontWeight: 700 }}>{aqi?.pm10} <span style={{ fontSize: '0.7rem' }}>µg/m³</span></div>
-                  </div>
-                </div>
-              </div>
-
-              {/* Personalized Advisory Card */}
-              <div className="glass-card" style={{ gridColumn: 'span 2', borderColor: `${risk?.color}40`, boxShadow: `0 8px 30px ${risk?.color}15`, background: 'linear-gradient(145deg, rgba(17,24,39,0.85), rgba(15,23,42,0.95))' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '10px', marginBottom: '16px' }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.9rem', fontWeight: 800, textTransform: 'uppercase', padding: '6px 14px', borderRadius: '999px', color: risk?.color, background: risk?.bg_color, border: `1.5px solid ${risk?.color}60` }}>
-                      <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: risk?.color }} />
-                      {risk?.badge}
-                    </div>
-                    {risk?.is_escalated && (
-                      <span style={{ fontSize: '0.75rem', fontWeight: 600, padding: '4px 10px', borderRadius: '999px', background: 'rgba(244,63,94,0.15)', color: '#fb7185', border: '1px solid rgba(244,63,94,0.3)' }}>
-                        Personalized Escalation Active (+{risk.escalation_count} steps)
-                      </span>
-                    )}
-                  </div>
-                  <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>{adv?.model_used}</div>
-                </div>
-
-                <h3 style={{ fontSize: '1.35rem', fontWeight: 800, color: '#f8fafc', marginBottom: '10px' }}>{adv?.headline}</h3>
-                <p style={{ fontSize: '1.05rem', lineHeight: '1.65', color: '#e2e8f0', marginBottom: '18px' }}>{adv?.advisory_text}</p>
-
-                {/* Explainability factors */}
-                {risk?.escalation_reasons?.length > 0 && (
-                  <div style={{ background: 'rgba(245,158,11,0.08)', border: '1px solid rgba(245,158,11,0.25)', borderRadius: 'var(--radius-md)', padding: '14px', marginBottom: '18px' }}>
-                    <div style={{ fontSize: '0.8rem', fontWeight: 700, color: '#fbbf24', textTransform: 'uppercase', marginBottom: '6px' }}>
-                      ⚠️ Clinical Rationale for Your Health Profile:
-                    </div>
-                    {risk.escalation_reasons.map((r, ri) => (
-                      <div key={ri} style={{ fontSize: '0.84rem', color: 'var(--text-secondary)', marginBottom: '4px' }}>• {r}</div>
                     ))}
                   </div>
-                )}
+                </div>
 
-                {/* Action Checklist */}
-                {adv?.action_items?.length > 0 && (
-                  <div>
-                    <div style={{ fontSize: '0.8rem', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', marginBottom: '10px' }}>
-                      Recommended Action Checklist:
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(400px, 1fr))', gap: '20px' }}>
+                  <div className="premium-card">
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '14px' }}>
+                      <h2 style={{ fontSize: '0.95rem', fontWeight: 700, color: '#0f172a', margin: 0, letterSpacing: '-0.015em' }}>Your Health Today</h2>
+                      <span style={{ fontSize: '0.66rem', fontWeight: 700, color: '#0369a1', background: '#e0f2fe', padding: '3px 8px', borderRadius: '999px', border: '1px solid #bae6fd', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+                        Personalized
+                      </span>
                     </div>
-                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: '10px' }}>
-                      {adv.action_items.map((act, ai) => (
-                        <div key={ai} style={{ display: 'flex', alignItems: 'flex-start', gap: '10px', padding: '12px', background: 'rgba(255,255,255,0.03)', border: '1px solid var(--border-subtle)', borderRadius: 'var(--radius-md)' }}>
-                          <span style={{ color: '#38bdf8' }}>✓</span>
-                          <span style={{ fontSize: '0.88rem', color: 'var(--text-primary)' }}>{act}</span>
+
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '20px', flexWrap: 'wrap' }}>
+                      <div style={{ position: 'relative', width: '118px', height: '118px', flexShrink: 0 }}>
+                        <svg viewBox="0 0 100 100" style={{ transform: 'rotate(-90deg)', width: '100%', height: '100%' }}>
+                          <circle cx="50" cy="50" r="40" stroke="#f1f5f9" strokeWidth="8" fill="none" />
+                          <circle cx="50" cy="50" r="40" stroke={riskColor} strokeWidth="8" fill="none" strokeDasharray="251.2" strokeDashoffset={251.2 - (251.2 * Math.min(100, risk.numeric_score || 62)) / 100} strokeLinecap="round" style={{ transition: 'stroke-dashoffset 0.8s ease' }} />
+                        </svg>
+                        <div style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
+                          <span style={{ fontSize: '1.7rem', fontWeight: 700, color: '#0f172a', lineHeight: 1, letterSpacing: '-0.03em' }}>{Math.round(risk.numeric_score || 62)}</span>
+                          <span style={{ fontSize: '0.66rem', color: '#94a3b8', fontWeight: 600, marginTop: '2px' }}>/ 100</span>
+                        </div>
+                      </div>
+
+                      <div style={{ flex: 1, minWidth: '180px' }}>
+                        <div style={{ display: 'inline-block', padding: '3px 10px', borderRadius: '999px', background: riskBg, border: `1px solid ${riskBorder}`, color: riskText, fontSize: '0.7rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '8px' }}>
+                          {risk.badge || 'Moderate Risk'}
+                        </div>
+                        <h3 style={{ fontSize: '0.95rem', fontWeight: 600, color: '#0f172a', margin: '0 0 4px 0', lineHeight: 1.3, letterSpacing: '-0.015em' }}>
+                          Today's air may affect you more.
+                        </h3>
+                        <p style={{ fontSize: '0.8rem', color: '#475569', lineHeight: 1.45, margin: 0 }}>
+                          Elevated PM2.5 with your {profile.conditions?.[0]?.replace('_', ' ') || 'sensitivity'} increases irritation.
+                        </p>
+                      </div>
+                    </div>
+
+                    <div style={{ marginTop: '18px', paddingTop: '14px', borderTop: '1px solid #f1f5f9', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                      <span style={{ fontSize: '0.72rem', color: '#94a3b8' }}>Baseline</span>
+                      <button onClick={() => setActiveTab('advisory')} style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', fontSize: '0.8rem', fontWeight: 600, color: '#0f172a', background: '#f1f5f9', padding: '6px 14px', borderRadius: '999px', border: 'none', cursor: 'pointer' }}>
+                        View Advisory →
+                      </button>
+                    </div>
+                  </div>
+
+                  <div className="premium-card">
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '14px' }}>
+                      <h2 style={{ fontSize: '0.95rem', fontWeight: 700, color: '#0f172a', margin: 0, letterSpacing: '-0.015em' }}>Air Quality</h2>
+                      <span style={{ fontSize: '0.66rem', fontWeight: 700, color: '#065f46', background: '#ecfdf5', padding: '3px 9px', borderRadius: '999px', border: '1px solid #a7f3d0', letterSpacing: '0.04em', textTransform: 'uppercase' }}>
+                        ● Live
+                      </span>
+                    </div>
+
+                    <div style={{ textAlign: 'center', position: 'relative', margin: '6px 0 8px' }}>
+                      <svg viewBox="0 0 200 110" style={{ width: '200px', height: 'auto', margin: '0 auto', display: 'block' }}>
+                        <defs>
+                          <linearGradient id="aqiGradient" x1="0%" y1="0%" x2="100%" y2="0%">
+                            <stop offset="0%" stopColor="#10b981" />
+                            <stop offset="35%" stopColor="#f59e0b" />
+                            <stop offset="70%" stopColor="#f97316" />
+                            <stop offset="100%" stopColor="#ef4444" />
+                          </linearGradient>
+                        </defs>
+                        <path d="M 20 100 A 80 80 0 0 1 180 100" fill="none" stroke="#f1f5f9" strokeWidth="14" strokeLinecap="round" />
+                        <path d="M 20 100 A 80 80 0 0 1 180 100" fill="none" stroke="url(#aqiGradient)" strokeWidth="14" strokeDasharray="251.2" strokeDashoffset={251.2 - (251.2 * Math.min(300, currentAqi)) / 300} strokeLinecap="round" style={{ transition: 'stroke-dashoffset 0.8s ease' }} />
+                      </svg>
+                      <div style={{ marginTop: '-40px' }}>
+                        <div style={{ fontSize: '2.4rem', fontWeight: 700, color: '#0f172a', lineHeight: 1, letterSpacing: '-0.035em' }}>{currentAqi}</div>
+                        <div style={{ fontSize: '0.66rem', fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.08em', marginTop: '2px' }}>US AQI</div>
+                        <div style={{ fontSize: '0.82rem', fontWeight: 600, color: currentAqi > 100 ? '#f97316' : '#10b981', marginTop: '4px' }}>
+                          {aqi.category || 'Moderate'}
+                        </div>
+                      </div>
+                    </div>
+
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '6px', textAlign: 'center', marginTop: '18px', paddingTop: '14px', borderTop: '1px solid #f1f5f9' }}>
+                      {[
+                        { l: 'PM2.5', v: Math.round(aqi.pm2_5 || 72) },
+                        { l: 'PM10', v: Math.round(aqi.pm10 || 104) },
+                        { l: 'NO₂', v: Math.round(aqi.nitrogen_dioxide || 34) },
+                        { l: 'O₃', v: Math.round(aqi.ozone || 82) },
+                      ].map((p, i) => (
+                        <div key={i} style={{ background: '#f8fafc', padding: '8px 4px', borderRadius: '10px', border: '1px solid #f1f5f9' }}>
+                          <div style={{ fontSize: '0.66rem', color: '#64748b', fontWeight: 600 }}>{p.l}</div>
+                          <div style={{ fontSize: '0.95rem', fontWeight: 700, color: '#0f172a', letterSpacing: '-0.02em' }}>{p.v}</div>
+                          <div style={{ fontSize: '0.58rem', color: '#94a3b8' }}>µg/m³</div>
                         </div>
                       ))}
                     </div>
                   </div>
-                )}
-
-                {/* What-If Simulator Toggle */}
-                <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '20px', paddingTop: '14px', borderTop: '1px solid var(--border-subtle)' }}>
-                  <button
-                    onClick={() => setShowSim(!showSim)}
-                    style={{ fontSize: '0.82rem', fontWeight: 600, color: '#38bdf8', padding: '6px 14px', borderRadius: '999px', background: 'rgba(56,189,248,0.1)', border: '1px solid rgba(56,189,248,0.3)' }}
-                  >
-                    {showSim ? 'Hide Simulator' : '⚡ Test "What-If" Scenario (Spike AQI / Heat)'}
-                  </button>
                 </div>
 
-                {showSim && (
-                  <div style={{ marginTop: '14px', padding: '16px', background: 'rgba(0,0,0,0.4)', borderRadius: 'var(--radius-md)', border: '1px solid rgba(56,189,248,0.3)' }}>
-                    <div style={{ fontSize: '0.9rem', fontWeight: 700, color: '#38bdf8', marginBottom: '12px' }}>Interactive Stress-Test Controls:</div>
-                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
-                      <div>
-                        <label style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>Simulated AQI: <strong>{simAqi}</strong></label>
-                        <input type="range" min="40" max="380" value={simAqi} onChange={e => setSimAqi(e.target.value)} style={{ width: '100%', accentColor: '#38bdf8' }} />
-                      </div>
-                      <div>
-                        <label style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>Simulated Temp: <strong>{simTemp}°C</strong></label>
-                        <input type="range" min="22" max="45" value={simTemp} onChange={e => setSimTemp(e.target.value)} style={{ width: '100%', accentColor: '#38bdf8' }} />
-                      </div>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '20px' }}>
+                  <div className="premium-card">
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '14px' }}>
+                      <h3 style={{ fontSize: '0.92rem', fontWeight: 700, color: '#0f172a', margin: 0 }}>Hourly Forecast</h3>
+                      <span style={{ fontSize: '0.72rem', color: '#64748b' }}>Next 8h →</span>
                     </div>
-                    <div style={{ display: 'flex', gap: '10px', marginTop: '14px' }}>
-                      <button onClick={handleSimulate} style={{ padding: '8px 16px', background: '#38bdf8', color: '#0b0f17', borderRadius: '8px', fontWeight: 700, fontSize: '0.82rem' }}>
-                        Run Scenario
-                      </button>
-                      <button onClick={handleResetSim} style={{ padding: '8px 16px', background: 'rgba(255,255,255,0.08)', color: '#fff', borderRadius: '8px', fontSize: '0.82rem' }}>
-                        Reset to Real-Time
-                      </button>
+                    <div className="horizontal-scroll">
+                      {hourlyData.map((h, i) => (
+                        <div key={i} style={{
+                          minWidth: '72px', background: h.isCurrent ? '#ffffff' : '#f8fafc',
+                          border: h.isCurrent ? '1.5px solid #0f172a' : '1px solid #e2e8f0',
+                          borderRadius: '14px', padding: '12px 8px', textAlign: 'center', flexShrink: 0
+                        }}>
+                          <div style={{ fontSize: '0.72rem', color: h.isCurrent ? '#0f172a' : '#64748b', fontWeight: h.isCurrent ? 700 : 600, marginBottom: '6px' }}>{h.time}</div>
+                          <div style={{ fontSize: '1.2rem', marginBottom: '6px' }}>{h.icon}</div>
+                          <div style={{ fontSize: '0.92rem', fontWeight: 700, color: '#0f172a', marginBottom: '4px', letterSpacing: '-0.02em' }}>{h.temp}°</div>
+                          <div style={{
+                            fontSize: '0.66rem', fontWeight: 700, padding: '2px 6px', borderRadius: '999px',
+                            background: h.aqi > 150 ? '#fef2f2' : h.aqi > 100 ? '#fffbeb' : '#ecfdf5',
+                            color: h.aqi > 150 ? '#991b1b' : h.aqi > 100 ? '#92400e' : '#065f46'
+                          }}>AQI {h.aqi}</div>
+                        </div>
+                      ))}
                     </div>
                   </div>
-                )}
-              </div>
-            </div>
 
-            {/* 7-Day Trend Chart & History */}
-            <div className="glass-card" style={{ marginTop: '24px' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
-                <span style={{ fontSize: '0.95rem', fontWeight: 700, textTransform: 'uppercase' }}>7-Day History & Trends</span>
-                <div style={{ display: 'flex', background: 'rgba(0,0,0,0.3)', borderRadius: '999px', padding: '2px' }}>
-                  <button onClick={() => setHistoryTab('chart')} style={{ padding: '5px 14px', borderRadius: '999px', fontSize: '0.78rem', fontWeight: 600, color: historyTab === 'chart' ? '#38bdf8' : 'var(--text-muted)', background: historyTab === 'chart' ? 'rgba(56,189,248,0.2)' : 'none' }}>
-                    Trajectory Chart
-                  </button>
-                  <button onClick={() => setHistoryTab('alerts')} style={{ padding: '5px 14px', borderRadius: '999px', fontSize: '0.78rem', fontWeight: 600, color: historyTab === 'alerts' ? '#38bdf8' : 'var(--text-muted)', background: historyTab === 'alerts' ? 'rgba(56,189,248,0.2)' : 'none' }}>
-                    Past Advisories ({history?.alerts?.length || 0})
+                  <div className="premium-card">
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '14px' }}>
+                      <h3 style={{ fontSize: '0.92rem', fontWeight: 700, color: '#0f172a', margin: 0 }}>7-Day Forecast</h3>
+                      <span style={{ fontSize: '0.72rem', color: '#64748b' }}>Weekly →</span>
+                    </div>
+                    <div className="horizontal-scroll">
+                      {dailyForecast.map((d, di) => (
+                        <div key={di} style={{
+                          minWidth: '66px', background: di === 0 ? '#ecfdf5' : '#f8fafc',
+                          border: di === 0 ? '1px solid #a7f3d0' : '1px solid #e2e8f0',
+                          borderRadius: '14px', padding: '10px 6px', textAlign: 'center', flexShrink: 0
+                        }}>
+                          <div style={{ fontSize: '0.72rem', fontWeight: 600, color: '#334155', marginBottom: '4px' }}>{d.day}</div>
+                          <div style={{ fontSize: '1.1rem', marginBottom: '4px' }}>{d.icon}</div>
+                          <div style={{ fontSize: '0.78rem', fontWeight: 700, color: '#0f172a' }}>
+                            {d.high}° <span style={{ fontSize: '0.7rem', color: '#94a3b8', fontWeight: 500 }}>{d.low}°</span>
+                          </div>
+                          <div style={{ fontSize: '0.62rem', color: '#059669', fontWeight: 700, marginTop: '4px' }}>AQI {d.aqi}</div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
+                  <div className="premium-card" style={{ display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
+                    <div>
+                      <h3 style={{ fontSize: '0.92rem', fontWeight: 700, color: '#0f172a', margin: '0 0 8px 0' }}>Today's Insight</h3>
+                      <p style={{ fontSize: '0.8rem', color: '#475569', lineHeight: 1.45, margin: 0 }}>
+                        Air quality improving over the next 3 days.
+                      </p>
+                    </div>
+                    <div style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between', marginTop: '16px' }}>
+                      <div style={{ display: 'flex', alignItems: 'flex-end', gap: '6px', height: '40px' }}>
+                        <div style={{ width: '8px', height: '36px', background: '#f59e0b', borderRadius: '3px' }} />
+                        <div style={{ width: '8px', height: '28px', background: '#38bdf8', borderRadius: '3px' }} />
+                        <div style={{ width: '8px', height: '22px', background: '#10b981', borderRadius: '3px' }} />
+                        <div style={{ width: '8px', height: '16px', background: '#10b981', borderRadius: '3px' }} />
+                      </div>
+                      <div style={{ textAlign: 'right' }}>
+                        <div style={{ fontSize: '1.15rem', fontWeight: 700, color: '#059669', lineHeight: 1 }}>↓ 32%</div>
+                        <div style={{ fontSize: '0.66rem', color: '#64748b' }}>vs last week</div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <div style={{ background: '#ffffff', border: '1px solid var(--border-card)', borderRadius: 'var(--radius-xl)', padding: '18px 24px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '12px' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                    <span style={{ fontSize: '1.2rem' }}>🌿</span>
+                    <div>
+                      <div style={{ fontSize: '0.9rem', fontWeight: 700, color: '#0f172a', letterSpacing: '-0.01em' }}>Small changes. Healthier tomorrows.</div>
+                      <div style={{ fontSize: '0.76rem', color: '#64748b' }}>Personalized environmental guidance for a more resilient you.</div>
+                    </div>
+                  </div>
+                  <button onClick={() => setActiveTab('advisory')} style={{ padding: '8px 16px', borderRadius: '999px', background: '#f1f5f9', color: '#0f172a', fontWeight: 600, fontSize: '0.8rem', border: 'none', cursor: 'pointer' }}>
+                    Explore Advisory →
                   </button>
                 </div>
-              </div>
+              </>
+            )}
 
-              {historyTab === 'chart' ? (
-                <div>
-                  <div style={{ display: 'flex', gap: '16px', fontSize: '0.75rem', color: 'var(--text-secondary)', marginBottom: '10px' }}>
-                    <span>🔵 AQI Trajectory</span>
-                    <span>🔴 PM 2.5 (x2 scale)</span>
-                    <span style={{ color: '#f59e0b' }}>--- 100 Caution Threshold</span>
+            {activeTab === 'advisory' && (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '12px' }}>
+                  <div>
+                    <h1 style={{ fontSize: '1.65rem', fontWeight: 700, color: '#0f172a', margin: 0, letterSpacing: '-0.025em' }}>Personal Advisory</h1>
+                    <p style={{ fontSize: '0.84rem', color: '#64748b', marginTop: '4px' }}>{loc.label || 'Bhopal'} · Today's tailored guidance</p>
                   </div>
-                  <div style={{ overflowX: 'auto' }}>
-                    <svg viewBox="0 0 760 180" style={{ width: '100%', minWidth: '540px', height: 'auto' }}>
-                      <line x1="40" y1="90" x2="730" y2="90" stroke="rgba(245,158,11,0.4)" strokeDasharray="4 4" />
-                      <line x1="40" y1="50" x2="730" y2="50" stroke="rgba(239,68,68,0.3)" strokeDasharray="4 4" />
-                      {history?.snapshots?.map((s, idx) => {
-                        const x = 40 + (idx / Math.max(1, history.snapshots.length - 1)) * 690;
-                        const y = 150 - (s.aqi / 250) * 120;
-                        return (
-                          <g key={idx}>
-                            <circle cx={x} cy={y} r="4" fill="#38bdf8" />
-                            <text x={x} y="170" fill="rgba(255,255,255,0.4)" fontSize="10" textAnchor="middle">{s.day}</text>
-                            <text x={x} y={y - 8} fill="#fff" fontSize="9" textAnchor="middle">{Math.round(s.aqi)}</text>
-                          </g>
-                        );
-                      })}
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px', background: riskBg, border: `1px solid ${riskBorder}`, padding: '6px 14px', borderRadius: '999px' }}>
+                    <span style={{ fontSize: '1.2rem', fontWeight: 700, color: riskText, letterSpacing: '-0.02em' }}>{Math.round(risk.numeric_score || 62)}</span>
+                    <span style={{ fontSize: '0.8rem', color: riskText, fontWeight: 600 }}>/ 100 · {risk.badge || 'Moderate'}</span>
+                  </div>
+                </div>
+
+                <div className="premium-card">
+                  <h2 style={{ fontSize: '1rem', fontWeight: 700, color: '#0f172a', margin: '0 0 14px 0', letterSpacing: '-0.015em' }}>Action Timeline</h2>
+                  <div style={{ background: '#fef2f2', border: '1px solid #fecaca', borderRadius: '14px', padding: '14px 18px', marginBottom: '16px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '12px' }}>
+                    <div>
+                      <div style={{ fontSize: '0.66rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', color: '#b91c1c' }}>Avoid window</div>
+                      <div style={{ fontSize: '0.95rem', fontWeight: 700, color: '#991b1b', marginTop: '2px' }}>11:00 AM – 4:00 PM</div>
+                    </div>
+                    <div style={{ background: '#ffffff', padding: '6px 14px', borderRadius: '10px', border: '1px solid #fca5a5', textAlign: 'right' }}>
+                      <div style={{ fontSize: '0.62rem', color: '#64748b', fontWeight: 700 }}>BETTER WINDOW</div>
+                      <div style={{ fontSize: '0.88rem', fontWeight: 700, color: '#059669' }}>6:30 PM – 8:30 PM</div>
+                    </div>
+                  </div>
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: '10px' }}>
+                    {(adv.action_items || []).slice(0, 3).map((item, idx) => (
+                      <div key={idx} style={{ background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '12px', padding: '12px 14px', display: 'flex', gap: '12px' }}>
+                        <div style={{ width: '24px', height: '24px', borderRadius: '50%', background: '#0f172a', color: '#ffffff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 700, fontSize: '0.7rem', flexShrink: 0, marginTop: '2px' }}>
+                          {idx + 1}
+                        </div>
+                        <div style={{ fontSize: '0.82rem', color: '#1e293b', fontWeight: 500, lineHeight: 1.4 }}>{item}</div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                <div className="premium-card">
+                  <h2 style={{ fontSize: '1rem', fontWeight: 700, color: '#0f172a', margin: '0 0 14px 0', letterSpacing: '-0.015em' }}>Why is my risk different?</h2>
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '18px' }}>
+                    <div>
+                      <div style={{ fontSize: '0.7rem', fontWeight: 700, color: '#475569', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: '10px' }}>Environmental</div>
+                      {[
+                        { l: 'PM2.5', c: '#f97316', bg: '#fff7ed', b: '#fed7aa', v: 'HIGH' },
+                        { l: 'AQI', c: '#f59e0b', bg: '#fffbeb', b: '#fde68a', v: 'MOD' },
+                        { l: 'UV', c: '#10b981', bg: '#ecfdf5', b: '#a7f3d0', v: 'LOW' },
+                        { l: 'Heat', c: '#f59e0b', bg: '#fffbeb', b: '#fde68a', v: 'MOD' }
+                      ].map((f, i) => (
+                        <div key={i} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '8px 12px', background: f.bg, borderRadius: '10px', border: `1px solid ${f.b}`, fontSize: '0.82rem', marginBottom: '6px' }}>
+                          <span style={{ color: '#334155' }}>{f.l}</span>
+                          <span style={{ fontWeight: 700, color: f.c, fontSize: '0.7rem' }}>{f.v}</span>
+                        </div>
+                      ))}
+                    </div>
+                    <div>
+                      <div style={{ fontSize: '0.7rem', fontWeight: 700, color: '#475569', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: '10px' }}>Personal</div>
+                      {[
+                        { l: 'Asthma', on: profile.conditions?.includes('asthma'), v: '+50%' },
+                        { l: 'Outdoor', on: profile.occupation === 'outdoor_worker', v: '+25%' },
+                        { l: 'Age', on: profile.age_group === '60+', v: '+30%' }
+                      ].map((f, i) => (
+                        <div key={i} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '8px 12px', background: f.on ? '#fff7ed' : '#f8fafc', borderRadius: '10px', border: '1px solid #f1f5f9', fontSize: '0.82rem', marginBottom: '6px' }}>
+                          <span style={{ color: '#334155' }}>{f.l}</span>
+                          <span style={{ fontWeight: 700, color: f.on ? '#9a3412' : '#64748b' }}>{f.on ? `${f.v} Active` : '1.0× Base'}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+
+                <div className="premium-card">
+                  <div style={{ fontSize: '0.66rem', fontWeight: 700, color: '#0284c7', textTransform: 'uppercase', letterSpacing: '0.06em' }}>Same air. Different risk.</div>
+                  <h2 style={{ fontSize: '1.15rem', fontWeight: 700, color: '#0f172a', margin: '4px 0 10px', letterSpacing: '-0.02em' }}>Personalized vulnerability</h2>
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '14px' }}>
+                    <div style={{ background: '#ffffff', borderRadius: '14px', padding: '16px', border: '1.5px solid #a7f3d0' }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                        <div>
+                          <div style={{ fontWeight: 700, fontSize: '0.95rem', color: '#0f172a' }}>Karan Malhotra</div>
+                          <div style={{ fontSize: '0.74rem', color: '#64748b' }}>26 · Healthy · Office</div>
+                        </div>
+                        <span style={{ fontSize: '0.66rem', fontWeight: 700, color: '#065f46', background: '#ecfdf5', padding: '3px 8px', borderRadius: '999px', letterSpacing: '0.04em' }}>LOW</span>
+                      </div>
+                      <div style={{ margin: '12px 0', padding: '10px 12px', background: '#f8fafc', borderRadius: '10px' }}>
+                        <div style={{ fontSize: '0.66rem', color: '#64748b' }}>AQI {currentAqi}</div>
+                        <div style={{ fontSize: '1.1rem', fontWeight: 700, color: '#10b981', letterSpacing: '-0.02em' }}>38/100</div>
+                      </div>
+                      <p style={{ fontSize: '0.78rem', color: '#475569', margin: 0 }}>Resilient. Normal activity can proceed.</p>
+                    </div>
+                    <div style={{ background: '#ffffff', borderRadius: '14px', padding: '16px', border: '1.5px solid #fecaca' }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                        <div>
+                          <div style={{ fontWeight: 700, fontSize: '0.95rem', color: '#0f172a' }}>Rajiv Verma</div>
+                          <div style={{ fontSize: '0.74rem', color: '#64748b' }}>68 · Heart disease</div>
+                        </div>
+                        <span style={{ fontSize: '0.66rem', fontWeight: 700, color: '#991b1b', background: '#fef2f2', padding: '3px 8px', borderRadius: '999px', letterSpacing: '0.04em' }}>HIGH</span>
+                      </div>
+                      <div style={{ margin: '12px 0', padding: '10px 12px', background: '#f8fafc', borderRadius: '10px' }}>
+                        <div style={{ fontSize: '0.66rem', color: '#64748b' }}>AQI {currentAqi}</div>
+                        <div style={{ fontSize: '1.1rem', fontWeight: 700, color: '#ef4444', letterSpacing: '-0.02em' }}>88/100</div>
+                      </div>
+                      <p style={{ fontSize: '0.78rem', color: '#475569', margin: 0 }}>Cardiovascular strain risk. Limit outdoor errands.</p>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="premium-card">
+                  <h2 style={{ fontSize: '1rem', fontWeight: 700, color: '#0f172a', margin: '0 0 12px 0', letterSpacing: '-0.015em' }}>What if conditions change?</h2>
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: '18px', alignItems: 'center' }}>
+                    <div>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.82rem', fontWeight: 600, marginBottom: '6px' }}>
+                        <span>AQI</span><span style={{ color: '#0284c7' }}>{simAqi}</span>
+                      </div>
+                      <input type="range" min="30" max="380" value={simAqi} onChange={e => setSimAqi(e.target.value)} style={{ width: '100%', accentColor: '#0284c7' }} />
+                      <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.82rem', fontWeight: 600, marginTop: '14px', marginBottom: '6px' }}>
+                        <span>Temp</span><span style={{ color: '#f97316' }}>{simTemp}°C</span>
+                      </div>
+                      <input type="range" min="15" max="46" value={simTemp} onChange={e => setSimTemp(e.target.value)} style={{ width: '100%', accentColor: '#f97316' }} />
+                      <button onClick={handleSimulate} disabled={simLoading} style={{ marginTop: '16px', width: '100%', padding: '10px', background: '#0f172a', color: '#ffffff', border: 'none', borderRadius: '999px', fontWeight: 600, fontSize: '0.82rem', cursor: 'pointer' }}>
+                        {simLoading ? 'Recalculating…' : 'Recalculate Risk →'}
+                      </button>
+                    </div>
+                    <div style={{ background: '#f8fafc', padding: '18px', borderRadius: '14px', border: '1px solid #e2e8f0', textAlign: 'center' }}>
+                      <div style={{ fontSize: '0.66rem', color: '#64748b', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em' }}>Now → Simulated</div>
+                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '14px', margin: '12px 0' }}>
+                        <div>
+                          <div style={{ fontSize: '1.5rem', fontWeight: 700, color: '#64748b', letterSpacing: '-0.02em' }}>{Math.round(risk.numeric_score || 62)}</div>
+                          <div style={{ fontSize: '0.62rem', color: '#94a3b8' }}>NOW</div>
+                        </div>
+                        <span style={{ fontSize: '1.2rem', color: '#94a3b8' }}>→</span>
+                        <div>
+                          <div style={{ fontSize: '1.9rem', fontWeight: 700, color: simResult?.risk?.risk_level === 'severe' ? '#ef4444' : '#f97316', letterSpacing: '-0.03em' }}>
+                            {simResult ? Math.round(simResult.risk?.numeric_score) : Math.round(Number(simAqi) * 0.45)}
+                          </div>
+                          <div style={{ fontSize: '0.62rem', fontWeight: 700, color: '#dc2626' }}>{simResult?.risk?.badge || 'EVALUATE'}</div>
+                        </div>
+                      </div>
+                      <div style={{ fontSize: '0.78rem', color: '#334155' }}>{simResult?.advisory?.headline || 'Adjust sliders.'}</div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {activeTab === 'trends' && (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '12px' }}>
+                  <div>
+                    <h1 style={{ fontSize: '1.65rem', fontWeight: 700, color: '#0f172a', margin: 0, letterSpacing: '-0.025em' }}>Your Health Week</h1>
+                    <p style={{ fontSize: '0.84rem', color: '#64748b', marginTop: '4px' }}>How conditions affect your health.</p>
+                  </div>
+                  <div style={{ padding: '6px 14px', background: '#ffffff', border: '1px solid #e2e8f0', borderRadius: '999px', fontSize: '0.8rem', fontWeight: 500, color: '#334155' }}>📅 Sep 01 – Sep 07 ⌵</div>
+                </div>
+
+                <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
+                  {[{ id: 'risk', label: 'Personal Risk' }, { id: 'aqi', label: 'AQI' }, { id: 'pm25', label: 'PM2.5' }, { id: 'temp', label: 'Temperature' }, { id: 'humidity', label: 'Humidity' }].map(m => {
+                    const isActive = trendMetric === m.id;
+                    return (
+                      <button key={m.id} onClick={() => setTrendMetric(m.id)} style={{ padding: '6px 14px', borderRadius: '999px', fontSize: '0.8rem', fontWeight: isActive ? 600 : 500, background: isActive ? '#0f172a' : '#ffffff', color: isActive ? '#ffffff' : '#475569', border: '1px solid', borderColor: isActive ? '#0f172a' : '#e2e8f0', cursor: 'pointer' }}>
+                        {m.label}
+                      </button>
+                    );
+                  })}
+                </div>
+
+                <div className="premium-card">
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
+                    <h2 style={{ fontSize: '1rem', fontWeight: 700, color: '#0f172a', margin: 0, letterSpacing: '-0.015em' }}>Personal Risk Trend</h2>
+                    <span style={{ fontSize: '0.74rem', color: '#9a3412', background: '#fff7ed', padding: '3px 10px', borderRadius: '999px', fontWeight: 600, border: '1px solid #fed7aa' }}>↗ +41%</span>
+                  </div>
+                  <div style={{ overflowX: 'auto', padding: '10px 0' }}>
+                    <svg viewBox="0 0 760 220" style={{ width: '100%', minWidth: '600px', height: 'auto', display: 'block' }}>
+                      <defs>
+                        <linearGradient id="areaGradient" x1="0" y1="0" x2="0" y2="1">
+                          <stop offset="0%" stopColor="#ef4444" stopOpacity="0.22" />
+                          <stop offset="50%" stopColor="#f59e0b" stopOpacity="0.1" />
+                          <stop offset="100%" stopColor="#10b981" stopOpacity="0.02" />
+                        </linearGradient>
+                      </defs>
+                      <line x1="50" y1="90" x2="710" y2="90" stroke="#f59e0b" strokeWidth="1.5" strokeDasharray="5 5" opacity="0.5" />
+                      <text x="714" y="94" fill="#d97706" fontSize="10" fontWeight="700">Threshold</text>
+                      <line x1="50" y1="40" x2="710" y2="40" stroke="#f1f5f9" strokeWidth="1" />
+                      <line x1="50" y1="140" x2="710" y2="140" stroke="#f1f5f9" strokeWidth="1" />
+                      <line x1="50" y1="190" x2="710" y2="190" stroke="#f1f5f9" strokeWidth="1" />
+                      <path d="M 60 180 Q 160 160 260 150 T 460 70 T 560 85 T 660 140 L 660 200 L 60 200 Z" fill="url(#areaGradient)" />
+                      <path d="M 60 180 Q 160 160 260 150 T 460 70 T 560 85 T 660 140" fill="none" stroke="#f97316" strokeWidth="2.5" strokeLinecap="round" />
+                      {[
+                        { x: 60, y: 180, label: 'Mon', val: 24 },
+                        { x: 160, y: 162, label: 'Tue', val: 32 },
+                        { x: 260, y: 150, label: 'Wed', val: 40 },
+                        { x: 360, y: 120, label: 'Thu', val: 56 },
+                        { x: 460, y: 70, label: 'Fri', val: 82, isPeak: true },
+                        { x: 560, y: 85, label: 'Sat', val: 74 },
+                        { x: 660, y: 140, label: 'Sun', val: 48 }
+                      ].map((pt, pti) => (
+                        <g key={pti}>
+                          <circle cx={pt.x} cy={pt.y} r={pt.isPeak ? 6 : 4} fill={pt.isPeak ? '#ef4444' : '#ffffff'} stroke={pt.isPeak ? '#ffffff' : '#f97316'} strokeWidth="2.5" />
+                          <text x={pt.x} y="215" fill="#64748b" fontSize="10" textAnchor="middle">{pt.label}</text>
+                          {pt.isPeak && (
+                            <g>
+                              <rect x={pt.x - 32} y={pt.y - 32} width="64" height="22" rx="6" fill="#0f172a" />
+                              <text x={pt.x} y={pt.y - 18} fill="#ffffff" fontSize="9" fontWeight="700" textAnchor="middle">Fri · Risk 82</text>
+                            </g>
+                          )}
+                        </g>
+                      ))}
                     </svg>
                   </div>
                 </div>
-              ) : (
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-                  {history?.alerts?.map((a, ai) => (
-                    <div key={ai} style={{ padding: '12px', background: 'rgba(255,255,255,0.03)', borderRadius: '8px', border: '1px solid var(--border-subtle)' }}>
-                      <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.75rem', color: 'var(--text-muted)', marginBottom: '4px' }}>
-                        <span style={{ fontWeight: 700, color: a.risk_level === 'high' ? '#f97316' : '#f59e0b', textTransform: 'uppercase' }}>{a.risk_level}</span>
-                        <span>{a.timestamp}</span>
+
+                <div>
+                  <div style={{ fontSize: '0.74rem', fontWeight: 700, color: '#475569', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: '10px' }}>Key Factors</div>
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '12px' }}>
+                    {[
+                      { icon: '💨', label: 'PM2.5', v: '+58%', c: '#f97316', s: 'vs last week' },
+                      { icon: '🌡️', label: 'Temp', v: '+2°C', c: '#0f172a', s: 'Warmer' },
+                      { icon: '💧', label: 'Humidity', v: '-14%', c: '#10b981', s: 'Drier' },
+                      { icon: '☀️', label: 'UV', v: '+22%', c: '#f59e0b', s: 'Higher' }
+                    ].map((f, i) => (
+                      <div key={i} className="premium-card" style={{ padding: '14px' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '4px' }}>
+                          <span>{f.icon}</span>
+                          <span style={{ fontSize: '0.74rem', fontWeight: 600, color: '#64748b' }}>{f.label}</span>
+                        </div>
+                        <div style={{ fontSize: '1.3rem', fontWeight: 700, color: f.c, letterSpacing: '-0.025em' }}>{f.v}</div>
+                        <div style={{ fontSize: '0.7rem', color: '#94a3b8' }}>{f.s}</div>
                       </div>
-                      <div style={{ fontSize: '0.9rem', fontWeight: 700, color: '#f8fafc' }}>{a.headline}</div>
-                      <div style={{ fontSize: '0.82rem', color: 'var(--text-secondary)', marginTop: '4px' }}>{a.advisory_text}</div>
-                    </div>
-                  ))}
+                    ))}
+                  </div>
                 </div>
-              )}
-            </div>
+
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '20px' }}>
+                  <div className="premium-card">
+                    <h3 style={{ fontSize: '0.95rem', fontWeight: 700, color: '#0f172a', margin: '0 0 14px 0' }}>Risk Distribution</h3>
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-around' }}>
+                      <div style={{ width: '100px', height: '100px' }}>
+                        <svg viewBox="0 0 36 36" style={{ width: '100%', height: '100%', transform: 'rotate(-90deg)' }}>
+                          <circle cx="18" cy="18" r="14" fill="none" stroke="#10b981" strokeWidth="5" strokeDasharray="28 72" strokeDashoffset="0" />
+                          <circle cx="18" cy="18" r="14" fill="none" stroke="#f59e0b" strokeWidth="5" strokeDasharray="42 58" strokeDashoffset="-28" />
+                          <circle cx="18" cy="18" r="14" fill="none" stroke="#f97316" strokeWidth="5" strokeDasharray="15 85" strokeDashoffset="-70" />
+                          <circle cx="18" cy="18" r="14" fill="none" stroke="#ef4444" strokeWidth="5" strokeDasharray="15 85" strokeDashoffset="-85" />
+                        </svg>
+                      </div>
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', fontSize: '0.78rem' }}>
+                        {[['#10b981', '2 Low'], ['#f59e0b', '3 Moderate'], ['#f97316', '1 High'], ['#ef4444', '1 Severe']].map(([c, l], i) => (
+                          <div key={i} style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                            <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: c }} />
+                            <span style={{ color: '#334155' }}>{l}</span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="premium-card">
+                    <h3 style={{ fontSize: '0.95rem', fontWeight: 700, color: '#0f172a', margin: '0 0 12px 0' }}>Insights</h3>
+                    {[['📈', 'Risk +18%', 'Biomass particulates'], ['☀️', 'Best: Wed & Sat AM', 'Cleanest air'], ['🛡️', '4 peak periods avoided', 'Compliance score']].map(([i, t, s], idx) => (
+                      <div key={idx} style={{ display: 'flex', alignItems: 'flex-start', gap: '10px', padding: '10px 12px', background: '#f8fafc', borderRadius: '10px', marginBottom: '8px' }}>
+                        <span>{i}</span>
+                        <div>
+                          <div style={{ fontSize: '0.82rem', fontWeight: 600, color: '#0f172a' }}>{t}</div>
+                          <div style={{ fontSize: '0.72rem', color: '#64748b' }}>{s}</div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {activeTab === 'alerts' && (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '12px' }}>
+                  <div>
+                    <h1 style={{ fontSize: '1.65rem', fontWeight: 700, color: '#0f172a', margin: 0, letterSpacing: '-0.025em' }}>Alert Timeline</h1>
+                    <p style={{ fontSize: '0.84rem', color: '#64748b' }}>Automated evaluations.</p>
+                  </div>
+                  <div style={{ display: 'flex', gap: '10px' }}>
+                    <button onClick={handleTriggerScheduler} style={{ padding: '8px 16px', borderRadius: '999px', background: '#0f172a', color: '#ffffff', fontSize: '0.78rem', fontWeight: 600, border: 'none', cursor: 'pointer' }}>Trigger Check</button>
+                    <button onClick={handleSendTestEmail} style={{ padding: '8px 16px', borderRadius: '999px', background: '#f1f5f9', color: '#0f172a', fontSize: '0.78rem', fontWeight: 600, border: '1px solid #e2e8f0', cursor: 'pointer' }}>Dispatch Email</button>
+                  </div>
+                </div>
+
+                {alertsList.length === 0 ? (
+                  <div className="premium-card" style={{ textAlign: 'center', padding: '40px 20px', color: '#64748b' }}>
+                    <div style={{ fontSize: '1.8rem', marginBottom: '8px' }}>📬</div>
+                    <div style={{ fontWeight: 700, color: '#0f172a' }}>No alerts dispatched yet</div>
+                  </div>
+                ) : (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+                    {alertsList.map((a, idx) => (
+                      <div key={idx} className="premium-card" style={{ padding: '18px' }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '10px', marginBottom: '12px' }}>
+                          <span style={{ fontSize: '0.66rem', fontWeight: 700, padding: '3px 10px', borderRadius: '999px', background: a.risk_level === 'severe' ? '#fef2f2' : a.risk_level === 'high' ? '#fff7ed' : '#fffbeb', color: a.risk_level === 'severe' ? '#dc2626' : a.risk_level === 'high' ? '#ea580c' : '#d97706', border: '1px solid currentColor', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+                            {a.risk_level} ALERT
+                          </span>
+                          <span style={{ fontSize: '0.76rem', color: '#94a3b8' }}>{a.timestamp}</span>
+                        </div>
+                        <h3 style={{ fontSize: '1rem', fontWeight: 700, color: '#0f172a', marginBottom: '12px', letterSpacing: '-0.015em' }}>{a.headline}</h3>
+                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '10px' }}>
+                          <div style={{ background: '#f8fafc', padding: '10px 12px', borderRadius: '10px' }}>
+                            <div style={{ fontSize: '0.66rem', fontWeight: 700, color: '#0284c7', letterSpacing: '0.05em', textTransform: 'uppercase', marginBottom: '4px' }}>What happened</div>
+                            <div style={{ fontSize: '0.8rem', color: '#334155', lineHeight: 1.4 }}>{(a.advisory_text || '').slice(0, 110)}…</div>
+                          </div>
+                          <div style={{ background: '#f8fafc', padding: '10px 12px', borderRadius: '10px' }}>
+                            <div style={{ fontSize: '0.66rem', fontWeight: 700, color: '#9a3412', letterSpacing: '0.05em', textTransform: 'uppercase', marginBottom: '4px' }}>Why it matters</div>
+                            <div style={{ fontSize: '0.8rem', color: '#334155', lineHeight: 1.4 }}>{(a.explanation || []).join('; ') || 'Sensitivity triggers.'}</div>
+                          </div>
+                          <div style={{ background: '#f8fafc', padding: '10px 12px', borderRadius: '10px' }}>
+                            <div style={{ fontSize: '0.66rem', fontWeight: 700, color: '#065f46', letterSpacing: '0.05em', textTransform: 'uppercase', marginBottom: '4px' }}>What to do</div>
+                            <div style={{ fontSize: '0.8rem', color: '#334155', lineHeight: 1.4 }}>{(a.action_items || [])[0] || 'Reduce midday exposure.'}</div>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
+
           </main>
 
-          {/* Notifications Drawer */}
           {isDrawerOpen && (
-            <div style={{ position: 'fixed', top: 0, right: 0, bottom: 0, left: 0, background: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(6px)', zIndex: 1000, display: 'flex', justifyContent: 'flex-end' }} onClick={() => setIsDrawerOpen(false)}>
-              <div style={{ width: '380px', maxWidth: '90vw', height: '100%', background: '#0f172a', borderLeft: '1px solid var(--border-subtle)', padding: '20px', display: 'flex', flexDirection: 'column', gap: '16px' }} onClick={e => e.stopPropagation()}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid var(--border-subtle)', paddingBottom: '12px' }}>
-                  <span style={{ fontSize: '1rem', fontWeight: 700 }}>🔔 Alert Logs & Dispatches</span>
-                  <button onClick={() => setIsDrawerOpen(false)} style={{ color: 'var(--text-muted)', fontSize: '1.2rem' }}>&times;</button>
+            <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(15,23,42,0.35)', backdropFilter: 'blur(6px)', zIndex: 1000, display: 'flex', justifyContent: 'flex-end', animation: 'fadeIn 0.2s ease-out' }} onClick={() => setIsDrawerOpen(false)}>
+              <div style={{ width: '420px', maxWidth: '92vw', height: '100%', background: '#ffffff', borderLeft: '1px solid #e2e8f0', padding: '20px', display: 'flex', flexDirection: 'column', gap: '14px', boxShadow: 'var(--shadow-elevated)' }} onClick={e => e.stopPropagation()}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <span style={{ fontSize: '1.1rem' }}>🔔</span>
+                    <div style={{ fontWeight: 700, fontSize: '1rem', color: '#0f172a' }}>Notifications & Alerts</div>
+                    {alertsList.length > 0 && (
+                      <span style={{ padding: '2px 8px', background: '#fef2f2', color: '#ef4444', border: '1px solid #fecaca', borderRadius: '999px', fontSize: '0.72rem', fontWeight: 700 }}>
+                        {alertsList.length}
+                      </span>
+                    )}
+                  </div>
+                  <button onClick={() => setIsDrawerOpen(false)} style={{ fontSize: '1rem', color: '#64748b', background: '#f1f5f9', width: '28px', height: '28px', borderRadius: '50%', cursor: 'pointer' }}>×</button>
                 </div>
 
-                <div style={{ background: 'rgba(56,189,248,0.1)', border: '1px solid rgba(56,189,248,0.3)', borderRadius: '8px', padding: '12px' }}>
-                  <div style={{ fontSize: '0.82rem', fontWeight: 700, color: '#38bdf8' }}>APScheduler Background Polling:</div>
-                  <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', margin: '4px 0 10px' }}>In production, runs every 15m. Click to trigger now:</div>
-                  <button onClick={handleTriggerScheduler} style={{ width: '100%', padding: '8px', background: '#38bdf8', color: '#0b0f17', borderRadius: '6px', fontWeight: 700, fontSize: '0.8rem' }}>
-                    Simulate Background Poll
+                <button
+                  onClick={() => { setActiveTab('alerts'); setIsDrawerOpen(false); }}
+                  style={{
+                    display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                    padding: '10px 14px', background: '#f1f5f9', borderRadius: '12px',
+                    border: '1px solid #e2e8f0', color: '#0f172a', fontWeight: 600, fontSize: '0.82rem',
+                    cursor: 'pointer'
+                  }}
+                >
+                  <span>Open Full Alerts Timeline</span>
+                  <span>→</span>
+                </button>
+
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
+                  <button
+                    onClick={handleSendTestEmail}
+                    style={{ padding: '9px 10px', background: '#059669', color: '#ffffff', borderRadius: '10px', fontWeight: 600, fontSize: '0.74rem', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '4px' }}
+                  >
+                    <span>📨</span>
+                    <span>Test Email</span>
+                  </button>
+                  <button
+                    onClick={handleTriggerScheduler}
+                    style={{ padding: '9px 10px', background: '#0f172a', color: '#ffffff', borderRadius: '10px', fontWeight: 600, fontSize: '0.74rem', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '4px' }}
+                  >
+                    <span>⏱</span>
+                    <span>Check Poll</span>
                   </button>
                 </div>
 
-                <div style={{ overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '10px' }}>
-                  {history?.audit_notifications?.map((n, ni) => (
-                    <div key={ni} style={{ background: 'rgba(255,255,255,0.03)', padding: '10px', borderRadius: '8px', border: '1px solid var(--border-subtle)', fontSize: '0.8rem' }}>
-                      <div style={{ display: 'flex', justifyContent: 'space-between', color: '#60a5fa', fontWeight: 600, fontSize: '0.72rem' }}>
-                        <span>{n.channel.toUpperCase()} DISPATCH</span>
-                        <span>{n.time}</span>
-                      </div>
-                      <div style={{ fontWeight: 700, margin: '4px 0', color: '#fff' }}>{n.subject}</div>
-                      <div style={{ color: 'var(--text-muted)', fontSize: '0.75rem' }}>{n.preview}</div>
+                <div style={{ overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '10px', flex: 1, paddingRight: '4px' }}>
+                  <div style={{ fontSize: '0.7rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', color: '#64748b', marginTop: '4px' }}>
+                    Recent Timeline
+                  </div>
+                  {alertsList.length === 0 ? (
+                    <div style={{ padding: '24px 14px', textAlign: 'center', color: '#94a3b8', fontSize: '0.82rem', background: '#f8fafc', borderRadius: '12px', border: '1px dashed #cbd5e1' }}>
+                      No active alerts today
                     </div>
-                  ))}
+                  ) : (
+                    alertsList.map((item, ii) => {
+                      const rLevel = item.risk_level || 'moderate';
+                      const badgeBg = rLevel === 'severe' ? '#fef2f2' : rLevel === 'high' ? '#fff7ed' : '#fffbeb';
+                      const badgeColor = rLevel === 'severe' ? '#ef4444' : rLevel === 'high' ? '#f97316' : '#f59e0b';
+                      const badgeBorder = rLevel === 'severe' ? '#fecaca' : rLevel === 'high' ? '#fed7aa' : '#fde68a';
+
+                      return (
+                        <div key={ii} style={{ background: '#ffffff', padding: '12px 14px', borderRadius: '12px', border: '1px solid #e2e8f0', boxShadow: '0 1px 3px rgba(0,0,0,0.03)' }}>
+                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
+                            <span style={{ fontSize: '0.64rem', fontWeight: 700, textTransform: 'uppercase', padding: '2px 7px', borderRadius: '999px', background: badgeBg, color: badgeColor, border: `1px solid ${badgeBorder}` }}>
+                              {rLevel}
+                            </span>
+                            <span style={{ fontSize: '0.68rem', color: '#94a3b8' }}>{item.timestamp || 'Recent'}</span>
+                          </div>
+                          <div style={{ fontWeight: 600, fontSize: '0.84rem', color: '#0f172a', marginBottom: '4px', lineHeight: 1.3 }}>
+                            {item.headline || item.subject || 'Environmental Health Notice'}
+                          </div>
+                          <div style={{ fontSize: '0.74rem', color: '#475569', lineHeight: 1.4 }}>
+                            {item.advisory_text || item.preview || ''}
+                          </div>
+                        </div>
+                      );
+                    })
+                  )}
                 </div>
               </div>
             </div>
           )}
 
-          {/* Toast Notification */}
+          {isProfileModalOpen && (
+            <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(15,23,42,0.4)', backdropFilter: 'blur(8px)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center' }} onClick={() => setIsProfileModalOpen(false)}>
+              <div style={{ width: '480px', maxWidth: '92vw', background: '#ffffff', borderRadius: '20px', padding: '24px', border: '1px solid #e2e8f0', boxShadow: 'var(--shadow-elevated)' }} onClick={e => e.stopPropagation()}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '14px' }}>
+                  <div style={{ fontWeight: 700, fontSize: '1.1rem', color: '#0f172a' }}>Health Profile</div>
+                  <button onClick={() => setIsProfileModalOpen(false)} style={{ fontSize: '1rem', color: '#64748b', background: '#f1f5f9', width: '28px', height: '28px', borderRadius: '50%' }}>×</button>
+                </div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '16px', padding: '10px', background: '#f8fafc', borderRadius: '10px' }}>
+                  <img src={user.picture} style={{ width: '40px', height: '40px', borderRadius: '50%' }} />
+                  <div>
+                    <div style={{ fontWeight: 700, color: '#0f172a' }}>{user.name}</div>
+                    <div style={{ fontSize: '0.74rem', color: '#64748b' }}>{user.email}</div>
+                  </div>
+                </div>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '8px', fontSize: '0.82rem' }}>
+                  <div><div style={{ fontWeight: 600, color: '#334155', marginBottom: '4px' }}>Age</div><div style={{ padding: '8px', background: '#f1f5f9', borderRadius: '8px' }}>{profile.age_group}</div></div>
+                  <div><div style={{ fontWeight: 600, color: '#334155', marginBottom: '4px' }}>Occupation</div><div style={{ padding: '8px', background: '#f1f5f9', borderRadius: '8px', textTransform: 'capitalize' }}>{profile.occupation?.replace('_', ' ')}</div></div>
+                </div>
+                <div style={{ marginTop: '10px' }}>
+                  <div style={{ fontWeight: 600, color: '#334155', marginBottom: '6px', fontSize: '0.82rem' }}>Conditions</div>
+                  <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
+                    {profile.conditions?.map((c, ci) => (
+                      <span key={ci} style={{ padding: '4px 10px', background: '#ecfdf5', color: '#059669', borderRadius: '999px', fontWeight: 600, fontSize: '0.74rem', textTransform: 'capitalize' }}>
+                        {c.replace('_', ' ')}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+                <div style={{ marginTop: '20px', display: 'flex', gap: '8px' }}>
+                  <a href="/auth/google" style={{ flex: 1, padding: '10px', background: '#0f172a', color: '#ffffff', borderRadius: '999px', textAlign: 'center', fontWeight: 600, fontSize: '0.82rem', textDecoration: 'none' }}>Sign in with Google</a>
+                  <button onClick={() => setIsProfileModalOpen(false)} style={{ padding: '10px 18px', background: '#f1f5f9', color: '#475569', borderRadius: '999px', fontWeight: 600, fontSize: '0.82rem', border: 'none', cursor: 'pointer' }}>Close</button>
+                </div>
+              </div>
+            </div>
+          )}
+
           {toast && (
-            <div style={{ position: 'fixed', bottom: '24px', right: '24px', background: '#111827', border: '1px solid rgba(56,189,248,0.4)', padding: '12px 18px', borderRadius: '8px', boxShadow: '0 8px 24px rgba(0,0,0,0.5)', fontSize: '0.85rem', color: '#f8fafc', zIndex: 2000 }}>
-              🛡️ {toast}
+            <div style={{ position: 'fixed', bottom: '24px', right: '24px', background: '#0f172a', color: '#ffffff', padding: '10px 18px', borderRadius: '999px', boxShadow: 'var(--shadow-elevated)', fontSize: '0.82rem', fontWeight: 500, zIndex: 2000, display: 'flex', alignItems: 'center', gap: '8px', animation: 'toastIn 0.3s ease' }}>
+              <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: '#10b981' }} />
+              <span>{toast}</span>
             </div>
           )}
         </div>

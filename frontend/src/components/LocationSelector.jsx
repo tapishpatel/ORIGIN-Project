@@ -1,22 +1,19 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { IconMapPin, IconRefreshCw } from './Icons';
 import { api } from '../api/client';
 
 export const LocationSelector = ({ currentLocation, onLocationSelect, onRefresh, isRefreshing }) => {
   const [searchQuery, setSearchQuery] = useState('');
   const [searchResults, setSearchResults] = useState([]);
-  const [isSearching, setIsSearching] = useState(false);
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const [geoError, setGeoError] = useState('');
   const searchTimeoutRef = useRef(null);
   const dropdownRef = useRef(null);
 
   const presetCities = [
-    { label: 'New Delhi, India', lat: 28.6139, lon: 77.2090 },
     { label: 'Bhopal, India', lat: 23.2547, lon: 77.4029 },
+    { label: 'New Delhi, India', lat: 28.6139, lon: 77.2090 },
     { label: 'Mumbai, India', lat: 19.0760, lon: 72.8777 },
     { label: 'Bengaluru, India', lat: 12.9716, lon: 77.5946 },
-    { label: 'New York, US', lat: 40.7128, lon: -74.0060 },
     { label: 'London, UK', lat: 51.5074, lon: -0.1278 },
   ];
 
@@ -24,15 +21,12 @@ export const LocationSelector = ({ currentLocation, onLocationSelect, onRefresh,
     if (searchQuery.trim().length >= 2) {
       if (searchTimeoutRef.current) clearTimeout(searchTimeoutRef.current);
       searchTimeoutRef.current = setTimeout(async () => {
-        setIsSearching(true);
         try {
           const res = await api.searchCities(searchQuery);
           setSearchResults(res || []);
           setIsDropdownOpen(true);
         } catch (e) {
           console.error('City search failed', e);
-        } finally {
-          setIsSearching(false);
         }
       }, 350);
     } else {
@@ -47,7 +41,7 @@ export const LocationSelector = ({ currentLocation, onLocationSelect, onRefresh,
   const handleUseGPS = () => {
     setGeoError('');
     if (!navigator.geolocation) {
-      setGeoError('Geolocation not supported by browser');
+      setGeoError('Geolocation unavailable');
       return;
     }
     navigator.geolocation.getCurrentPosition(
@@ -57,11 +51,11 @@ export const LocationSelector = ({ currentLocation, onLocationSelect, onRefresh,
         onLocationSelect({
           lat: Number(lat.toFixed(4)),
           lon: Number(lon.toFixed(4)),
-          label: `GPS Location (${lat.toFixed(2)}°, ${lon.toFixed(2)}°)`,
+          label: `GPS (${lat.toFixed(1)}°, ${lon.toFixed(1)}°)`,
         });
       },
-      (err) => {
-        setGeoError('GPS access denied or unavailable');
+      () => {
+        setGeoError('GPS denied');
       }
     );
   };
@@ -73,42 +67,108 @@ export const LocationSelector = ({ currentLocation, onLocationSelect, onRefresh,
   };
 
   return (
-    <div className="location-bar">
-      <div className="location-left">
-        <div className="current-loc-badge">
-          <IconMapPin size={18} color="#38bdf8" />
-          <span className="loc-label">{currentLocation?.label || 'Bhopal, MP'}</span>
+    <div style={{
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      flexWrap: 'wrap',
+      gap: '10px',
+      background: '#ffffff',
+      border: '1px solid var(--border-card)',
+      borderRadius: 'var(--radius-lg)',
+      padding: '8px 14px',
+      boxShadow: 'var(--shadow-subtle)'
+    }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+        <div style={{
+          display: 'inline-flex',
+          alignItems: 'center',
+          gap: '6px',
+          padding: '4px 10px',
+          background: '#f8fafc',
+          border: '1px solid #e2e8f0',
+          borderRadius: '999px',
+          fontSize: '0.78rem',
+          fontWeight: 600,
+          color: '#0f172a'
+        }}>
+          <span>📍</span>
+          <span>{currentLocation?.label || 'Bhopal, India'}</span>
         </div>
 
-        <button className="gps-btn" onClick={handleUseGPS} title="Detect Current GPS Location">
-          Use My GPS
+        <button
+          onClick={handleUseGPS}
+          style={{
+            padding: '4px 10px',
+            borderRadius: '999px',
+            border: '1px solid #e2e8f0',
+            background: '#ffffff',
+            fontSize: '0.72rem',
+            fontWeight: 500,
+            color: '#475569',
+            cursor: 'pointer'
+          }}
+        >
+          GPS
         </button>
 
-        {geoError && <span className="geo-error">{geoError}</span>}
+        {geoError && (
+          <span style={{ fontSize: '0.7rem', color: '#ef4444' }}>{geoError}</span>
+        )}
       </div>
 
-      <div className="location-center" ref={dropdownRef}>
-        <div className="search-box">
-          <input
-            type="text"
-            placeholder="Search any global city (e.g., Delhi, Tokyo)..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            onFocus={() => searchResults.length > 0 && setIsDropdownOpen(true)}
-            className="search-input"
-          />
-          {isSearching && <span className="search-spinner" />}
-        </div>
+      <div style={{ position: 'relative', flex: '1 1 200px', maxWidth: '320px' }} ref={dropdownRef}>
+        <input
+          type="text"
+          placeholder="Search city…"
+          value={searchQuery}
+          onChange={(e) => setSearchQuery(e.target.value)}
+          onFocus={() => searchResults.length > 0 && setIsDropdownOpen(true)}
+          style={{
+            width: '100%',
+            padding: '6px 12px',
+            borderRadius: '999px',
+            border: '1px solid #e2e8f0',
+            background: '#f8fafc',
+            fontSize: '0.8rem',
+            color: '#0f172a',
+            outline: 'none'
+          }}
+        />
 
         {isDropdownOpen && searchResults.length > 0 && (
-          <div className="search-dropdown">
+          <div style={{
+            position: 'absolute',
+            top: 'calc(100% + 6px)',
+            left: 0,
+            right: 0,
+            background: '#ffffff',
+            border: '1px solid var(--border-card)',
+            borderRadius: '12px',
+            boxShadow: '0 8px 24px rgba(15, 23, 42, 0.1)',
+            zIndex: 50,
+            overflow: 'hidden'
+          }}>
             {searchResults.map((r, i) => (
               <button
                 key={i}
-                className="dropdown-item"
                 onClick={() => handleSelectCity(r)}
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '8px',
+                  width: '100%',
+                  padding: '8px 14px',
+                  background: 'none',
+                  border: 'none',
+                  borderBottom: '1px solid #f1f5f9',
+                  textAlign: 'left',
+                  fontSize: '0.78rem',
+                  color: '#0f172a',
+                  cursor: 'pointer'
+                }}
               >
-                <IconMapPin size={14} color="var(--text-muted)" />
+                <span>📍</span>
                 <span>{r.label}</span>
               </button>
             ))}
@@ -116,177 +176,51 @@ export const LocationSelector = ({ currentLocation, onLocationSelect, onRefresh,
         )}
       </div>
 
-      <div className="location-right">
-        <div className="preset-chips">
-          {presetCities.map((c, i) => (
+      <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap' }}>
+        {presetCities.map((c, i) => {
+          const isMatch = currentLocation?.label?.includes(c.label.split(',')[0]);
+          return (
             <button
               key={i}
-              className={`preset-chip ${currentLocation?.label?.includes(c.label.split(',')[0]) ? 'active' : ''}`}
               onClick={() => handleSelectCity(c)}
+              style={{
+                padding: '3px 9px',
+                borderRadius: '999px',
+                fontSize: '0.7rem',
+                fontWeight: isMatch ? 600 : 500,
+                background: isMatch ? '#0f172a' : '#f8fafc',
+                color: isMatch ? '#ffffff' : '#475569',
+                border: '1px solid',
+                borderColor: isMatch ? '#0f172a' : '#e2e8f0',
+                cursor: 'pointer'
+              }}
             >
               {c.label.split(',')[0]}
             </button>
-          ))}
-        </div>
+          );
+        })}
 
-        <button 
-          className="refresh-btn" 
-          onClick={onRefresh} 
+        <button
+          onClick={onRefresh}
           disabled={isRefreshing}
-          title="Force refresh live weather & advisory"
+          style={{
+            display: 'inline-flex',
+            alignItems: 'center',
+            gap: '5px',
+            padding: '4px 12px',
+            borderRadius: '999px',
+            background: '#f1f5f9',
+            border: 'none',
+            fontSize: '0.72rem',
+            fontWeight: 600,
+            color: '#0f172a',
+            cursor: isRefreshing ? 'not-allowed' : 'pointer'
+          }}
         >
-          <IconRefreshCw size={16} className={isRefreshing ? 'spinning' : ''} />
-          <span>{isRefreshing ? 'Updating...' : 'Refresh'}</span>
+          <span style={{ fontSize: '0.85rem' }}>⟳</span>
+          <span>{isRefreshing ? '…' : 'Refresh'}</span>
         </button>
       </div>
-
-      <style>{`
-        .location-bar {
-          display: flex;
-          align-items: center;
-          justify-content: space-between;
-          flex-wrap: wrap;
-          gap: 16px;
-          margin-top: 24px;
-          padding: 14px 20px;
-          background: rgba(15, 23, 42, 0.7);
-          backdrop-filter: blur(14px);
-          border: 1px solid var(--border-subtle);
-          border-radius: var(--radius-lg);
-        }
-        .location-left {
-          display: flex;
-          align-items: center;
-          gap: 12px;
-        }
-        .current-loc-badge {
-          display: flex;
-          align-items: center;
-          gap: 8px;
-          font-weight: 700;
-          font-size: 0.92rem;
-          color: var(--text-primary);
-        }
-        .gps-btn {
-          font-size: 0.75rem;
-          padding: 4px 10px;
-          border-radius: var(--radius-full);
-          background: rgba(56, 189, 248, 0.15);
-          color: #38bdf8;
-          border: 1px solid rgba(56, 189, 248, 0.3);
-          font-weight: 600;
-        }
-        .gps-btn:hover {
-          background: rgba(56, 189, 248, 0.25);
-        }
-        .geo-error {
-          font-size: 0.75rem;
-          color: #f87171;
-        }
-        .location-center {
-          flex: 1;
-          min-width: 260px;
-          max-width: 420px;
-          position: relative;
-        }
-        .search-box {
-          position: relative;
-          display: flex;
-          align-items: center;
-        }
-        .search-input {
-          width: 100%;
-          padding: 8px 14px;
-          background: rgba(0, 0, 0, 0.3);
-          border: 1px solid var(--border-subtle);
-          border-radius: var(--radius-md);
-          font-size: 0.85rem;
-          outline: none;
-          transition: border-color 0.2s;
-        }
-        .search-input:focus {
-          border-color: #38bdf8;
-        }
-        .search-dropdown {
-          position: absolute;
-          top: 100%;
-          left: 0;
-          right: 0;
-          margin-top: 6px;
-          background: #111827;
-          border: 1px solid var(--border-subtle);
-          border-radius: var(--radius-md);
-          box-shadow: 0 10px 25px rgba(0, 0, 0, 0.5);
-          z-index: 50;
-          max-height: 220px;
-          overflow-y: auto;
-        }
-        .dropdown-item {
-          display: flex;
-          align-items: center;
-          gap: 10px;
-          width: 100%;
-          padding: 10px 14px;
-          text-align: left;
-          font-size: 0.82rem;
-          color: var(--text-primary);
-          border-bottom: 1px solid rgba(255, 255, 255, 0.04);
-        }
-        .dropdown-item:hover {
-          background: rgba(56, 189, 248, 0.15);
-        }
-        .location-right {
-          display: flex;
-          align-items: center;
-          gap: 12px;
-        }
-        .preset-chips {
-          display: flex;
-          align-items: center;
-          gap: 6px;
-          flex-wrap: wrap;
-        }
-        .preset-chip {
-          font-size: 0.72rem;
-          padding: 4px 9px;
-          border-radius: var(--radius-full);
-          background: rgba(255, 255, 255, 0.04);
-          border: 1px solid var(--border-subtle);
-          color: var(--text-secondary);
-        }
-        .preset-chip:hover {
-          background: rgba(255, 255, 255, 0.08);
-          color: var(--text-primary);
-        }
-        .preset-chip.active {
-          background: rgba(56, 189, 248, 0.2);
-          border-color: #38bdf8;
-          color: #38bdf8;
-          font-weight: 600;
-        }
-        .refresh-btn {
-          display: flex;
-          align-items: center;
-          gap: 6px;
-          padding: 7px 14px;
-          background: rgba(255, 255, 255, 0.06);
-          border: 1px solid var(--border-subtle);
-          border-radius: var(--radius-md);
-          font-size: 0.8rem;
-          font-weight: 600;
-          color: var(--text-primary);
-        }
-        .refresh-btn:hover {
-          background: rgba(255, 255, 255, 0.12);
-        }
-        .spinning {
-          animation: spin 1s linear infinite;
-        }
-        @keyframes spin {
-          from { transform: rotate(0deg); }
-          to { transform: rotate(360deg); }
-        }
-      `}</style>
     </div>
   );
 };

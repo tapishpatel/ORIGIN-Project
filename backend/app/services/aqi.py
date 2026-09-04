@@ -94,6 +94,7 @@ async def fetch_aqi_data(lat: float, lon: float) -> Dict[str, Any]:
             aqis = hourly.get("us_aqi", [])[:24]
             pm25s = hourly.get("pm2_5", [])[:24]
 
+            now = time.time()
             return {
                 "aqi": us_aqi_val,
                 "pm2_5": round(float(pm2_5), 1),
@@ -103,6 +104,10 @@ async def fetch_aqi_data(lat: float, lon: float) -> Dict[str, Any]:
                 "color": cat["color"],
                 "bg_color": cat["bgColor"],
                 "description": cat["description"],
+                "is_live": True,
+                "is_fallback": False,
+                "source": "Open-Meteo Air Quality Live API",
+                "fetched_at": now,
                 "hourly_aqi": [
                     {"time": t, "aqi": a, "pm2_5": p}
                     for t, a, p in zip(times, aqis, pm25s)
@@ -111,7 +116,7 @@ async def fetch_aqi_data(lat: float, lon: float) -> Dict[str, Any]:
             }
     except Exception as e:
         logger.error(f"Error fetching Open-Meteo AQI for ({lat}, {lon}): {e}")
-        # Safe fallback
+        # Safe deterministic fallback with explicit metadata
         fallback_aqi = 115.0
         cat = get_aqi_category(fallback_aqi)
         return {
@@ -123,5 +128,10 @@ async def fetch_aqi_data(lat: float, lon: float) -> Dict[str, Any]:
             "color": cat["color"],
             "bg_color": cat["bgColor"],
             "description": cat["description"],
+            "is_live": False,
+            "is_fallback": True,
+            "source": "Fallback Estimate (Air Quality Station Feed Unavailable)",
+            "fallback_reason": str(e),
+            "fetched_at": time.time(),
             "hourly_aqi": [],
         }
