@@ -55,12 +55,26 @@ app.include_router(advisory.router)
 app.include_router(history.router)
 
 
+import os
+from fastapi import Request
+from fastapi.responses import FileResponse
+
+@app.get("/app")
 @app.get("/")
-async def root():
+async def root(request: Request):
+    accept = request.headers.get("accept", "")
+    app_path = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))), "frontend", "public", "app.html")
+    if ("text/html" in accept or request.url.path == "/app") and os.path.exists(app_path):
+        return FileResponse(
+            app_path,
+            media_type="text/html",
+            headers={"Cache-Control": "no-cache, no-store, must-revalidate", "Pragma": "no-cache"}
+        )
     return {
         "app": settings.APP_NAME,
         "status": "online",
         "version": "1.0.0",
         "docs_url": "/docs",
+        "ui_url": "/app",
         "db_mode": "in-memory-fallback" if db.is_in_memory else "mongodb-atlas",
     }
