@@ -1,11 +1,32 @@
 const API_BASE_URL = 'http://127.0.0.1:8000';
 
-let authToken = localStorage.getItem('aero_auth_token') || 'token-demo-asthma-worker';
+// Check if token was passed via cookie (from Google OAuth redirect)
+const getCookie = (name) => {
+  const value = `; ${document.cookie}`;
+  const parts = value.split(`; ${name}=`);
+  if (parts.length === 2) return parts.pop().split(';').shift();
+  return null;
+};
+
+const cookieToken = getCookie('aero_auth_token');
+if (cookieToken) {
+  localStorage.setItem('aero_auth_token', cookieToken);
+  // Clear the cookie so it doesn't linger
+  document.cookie = 'aero_auth_token=; Max-Age=0; path=/;';
+}
+
+let authToken = localStorage.getItem('aero_auth_token') || null;
 
 export const setAuthToken = (token) => {
   authToken = token;
   localStorage.setItem('aero_auth_token', token);
 };
+
+// Safety check: clear old demo token if it somehow persisted
+if (authToken && authToken.startsWith('token-demo')) {
+  authToken = null;
+  localStorage.removeItem('aero_auth_token');
+}
 
 export const getAuthToken = () => authToken;
 
@@ -42,14 +63,6 @@ export const api = {
     const qs = params.toString();
     return request(qs ? `${url}?${qs}` : url);
   },
-
-  // Auth & Personas
-  getPersonas: () => request('/auth/personas'),
-  demoLogin: (personaId) =>
-    request('/auth/demo-login', {
-      method: 'POST',
-      body: JSON.stringify({ persona_id: personaId }),
-    }),
 
   // User & Profile
   getMe: () => request('/api/me'),

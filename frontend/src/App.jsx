@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { api, setAuthToken } from './api/client';
+import { api, setAuthToken, getAuthToken } from './api/client';
 import { Navbar } from './components/Navbar';
 import { DemoUserBanner } from './components/DemoUserBanner';
 import { LocationSelector } from './components/LocationSelector';
@@ -10,17 +10,34 @@ import { HistoryTrends } from './components/HistoryTrends';
 import { ProfileModal } from './components/ProfileModal';
 import { NotificationDrawer } from './components/NotificationDrawer';
 import { IconSparkles, IconShield } from './components/Icons';
+import { OnboardingForm } from './components/OnboardingForm';
 
 export function App() {
   const [dashboardData, setDashboardData] = useState(null);
   const [personas, setPersonas] = useState([]);
-  const [activePersonaId, setActivePersonaId] = useState('demo-asthma-worker');
+  const [activePersonaId, setActivePersonaId] = useState('');
   const [historyData, setHistoryData] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [isProfileOpen, setIsProfileOpen] = useState(false);
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
   const [toastMessage, setToastMessage] = useState('');
+
+  if (!getAuthToken()) {
+    return (
+      <div style={{ height: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#090d16', color: 'white', flexDirection: 'column' }}>
+        <IconShield size={48} color="#38bdf8" />
+        <h2 style={{ marginTop: '20px' }}>AeroHealth Secure Login</h2>
+        <a href="http://localhost:8000/auth/google/login" style={{ background: '#38bdf8', color: '#090d16', padding: '10px 20px', borderRadius: '8px', textDecoration: 'none', fontWeight: 'bold', marginTop: '20px' }}>
+          Login with Google
+        </a>
+      </div>
+    );
+  }
+
+  if (window.location.pathname === '/form') {
+    return <OnboardingForm />;
+  }
 
   const showToast = (msg) => {
     setToastMessage(msg);
@@ -30,10 +47,13 @@ export function App() {
   // Load initial personas and dashboard
   useEffect(() => {
     const init = async () => {
+      if (!getAuthToken()) {
+        setIsLoading(false);
+        return;
+      }
       setIsLoading(true);
       try {
-        const pList = await api.getPersonas();
-        setPersonas(pList || []);
+        setPersonas([]);
 
         // Load dashboard for default persona
         const data = await api.getDashboard();
@@ -43,6 +63,10 @@ export function App() {
         const hData = await api.getHistory(7);
         setHistoryData(hData);
       } catch (err) {
+        if (err.message && err.message.includes('Profile not found')) {
+          window.location.href = '/form';
+          return;
+        }
         console.error('Initial data load failed:', err);
         showToast('Error connecting to backend API. Retrying...');
       } finally {
@@ -54,26 +78,7 @@ export function App() {
 
   // Handle switching demo personas
   const handleSelectPersona = async (personaId) => {
-    setActivePersonaId(personaId);
-    setIsRefreshing(true);
-    try {
-      const loginRes = await api.demoLogin(personaId);
-      setAuthToken(loginRes.access_token);
-
-      // Re-fetch dashboard with new profile
-      const data = await api.getDashboard();
-      setDashboardData(data);
-
-      const hData = await api.getHistory(7);
-      setHistoryData(hData);
-
-      showToast(`Switched profile to ${loginRes.user.name} (${data.risk?.badge})`);
-    } catch (err) {
-      console.error('Persona switch failed', err);
-      showToast('Failed to switch persona');
-    } finally {
-      setIsRefreshing(false);
-    }
+    // Demo persona selection is disabled
   };
 
   // Handle manual location change
@@ -104,9 +109,6 @@ export function App() {
     try {
       const data = await api.getDashboard();
       setDashboardData(data);
-      const hData = await api.getHistory(7);
-      setHistoryData(hData);
-      showToast('Live weather & health risk updated');
     } catch (err) {
       console.error('Refresh failed', err);
       showToast('Refresh failed');
@@ -138,9 +140,7 @@ export function App() {
         risk: res.risk,
         advisory: res.advisory,
       }));
-      const hData = await api.getHistory(7);
-      setHistoryData(hData);
-      showToast(res.simulated ? 'Scenario simulated successfully' : 'Reset to real live conditions');
+      showToast('Simulation complete. AI Advisory regenerated.');
     } catch (err) {
       console.error('Simulation failed', err);
       showToast('Simulation failed');
@@ -160,6 +160,12 @@ export function App() {
       console.error('Scheduler trigger failed', err);
       showToast('Scheduler trigger failed');
     }
+  };
+
+
+  const handleLogout = () => {
+    localStorage.removeItem('aero_auth_token');
+    window.location.href = '/';
   };
 
   if (isLoading) {
@@ -203,17 +209,20 @@ export function App() {
         profile={dashboardData?.profile}
         onOpenProfile={() => setIsProfileOpen(true)}
         onToggleNotifications={() => setIsDrawerOpen(true)}
+        onLogout={handleLogout}
         unreadCount={historyData?.audit_notifications?.length || 0}
       />
 
       <main className="app-container">
         {/* Hackathon Demo Switcher Banner */}
-        <DemoUserBanner
-          activePersonaId={activePersonaId}
-          personas={personas}
-          onSelectPersona={handleSelectPersona}
-          isLoading={isRefreshing}
-        />
+        {personas && personas.length > 0 && (
+          <DemoUserBanner
+            activePersonaId={activePersonaId}
+            personas={personas}
+            onSelectPersona={handleSelectPersona}
+            isLoading={isRefreshing}
+          />
+        )}
 
         {/* Location bar with GPS & search */}
         <LocationSelector

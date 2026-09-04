@@ -1,7 +1,7 @@
 import React from 'react';
 import { IconShield, IconBell, IconSettings, IconActivity } from './Icons';
 
-export const Navbar = ({ user, profile, onOpenProfile, onToggleNotifications, unreadCount = 0 }) => {
+export const Navbar = ({ user, profile, onOpenProfile, onToggleNotifications, onLogout, unreadCount = 0 }) => {
   return (
     <header className="navbar-container">
       <div className="navbar-brand">
@@ -41,6 +41,14 @@ export const Navbar = ({ user, profile, onOpenProfile, onToggleNotifications, un
           />
           <span className="user-name">{user?.name || 'Health Profile'}</span>
           <IconSettings size={16} color="var(--text-muted)" />
+        </button>
+
+        <button 
+          className="logout-btn" 
+          onClick={onLogout}
+          title="Sign Out"
+        >
+          Sign Out
         </button>
       </div>
 
@@ -163,6 +171,19 @@ export const Navbar = ({ user, profile, onOpenProfile, onToggleNotifications, un
         .user-name {
           font-size: 0.85rem;
           font-weight: 600;
+        }
+        .logout-btn {
+          background: transparent;
+          border: 1px solid #ef4444;
+          color: #ef4444;
+          padding: 6px 14px;
+          border-radius: var(--radius-full);
+          font-size: 0.8rem;
+          font-weight: 600;
+          cursor: pointer;
+        }
+        .logout-btn:hover {
+          background: rgba(239, 68, 68, 0.1);
         }
         @media (max-width: 768px) {
           .api-badge { display: none; }
