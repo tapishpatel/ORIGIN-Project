@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { api, setAuthToken } from './api/client';
+import { api, setAuthToken, getAuthToken } from './api/client';
 import { Navbar } from './components/Navbar';
 import { LocationSelector } from './components/LocationSelector';
 import { WeatherCard } from './components/WeatherCard';
@@ -8,12 +8,13 @@ import { AdvisoryCard } from './components/AdvisoryCard';
 import { HistoryTrends } from './components/HistoryTrends';
 import { ProfileModal } from './components/ProfileModal';
 import { NotificationDrawer } from './components/NotificationDrawer';
+import { OnboardingForm } from './components/OnboardingForm';
 
 export function App() {
   const [activeTab, setActiveTab] = useState('home');
   const [dashboardData, setDashboardData] = useState(null);
   const [personas, setPersonas] = useState([]);
-  const [activePersonaId, setActivePersonaId] = useState('demo-asthma-worker');
+  const [activePersonaId, setActivePersonaId] = useState('');
   const [historyData, setHistoryData] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
@@ -21,6 +22,10 @@ export function App() {
   const [isProfileOpen, setIsProfileOpen] = useState(false);
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
   const [toastMessage, setToastMessage] = useState('');
+
+  if (window.location.pathname === '/form') {
+    return <OnboardingForm />;
+  }
 
   const showToast = (msg) => {
     setToastMessage(msg);
@@ -172,6 +177,11 @@ export function App() {
     }
   };
 
+  const handleLogout = () => {
+    localStorage.removeItem('aero_auth_token');
+    window.location.href = '/';
+  };
+
   if (isLoading && !dashboardData) {
     return (
       <div style={{
@@ -240,11 +250,7 @@ export function App() {
         onOpenProfile={() => setIsProfileOpen(true)}
         onToggleNotifications={() => setIsDrawerOpen(true)}
         unreadCount={alertsList.length}
-        isForcedFallback={isForcedFallback}
-        personas={personas}
-        activePersonaId={activePersonaId}
-        onSelectPersona={handleSelectPersona}
-        isLoadingPersona={isRefreshing}
+        onLogout={getAuthToken() ? handleLogout : undefined}
       />
 
       <main className="app-container" style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>

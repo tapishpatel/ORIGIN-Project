@@ -37,15 +37,7 @@ async def get_dashboard(
     """
     profile = await db.profiles.find_one({"user_id": user["id"]})
     if not profile:
-        profile = {
-            "user_id": user["id"],
-            "age_group": "18-40",
-            "conditions": ["none"],
-            "occupation": "office",
-            "location": {"lat": 23.2547, "lon": 77.4029, "label": "Bhopal, MP"},
-            "alert_sensitivity": "normal",
-        }
-
+        raise HTTPException(status_code=404, detail="Profile not found. Please complete onboarding.")
     # Use query lat/lon if provided (e.g. temporary geolocation test), otherwise user's saved location
     saved_loc = profile.get("location", {})
     target_lat = lat if lat is not None else saved_loc.get("lat", 23.2547)
@@ -91,6 +83,7 @@ async def get_dashboard(
         "location_label": label,
     }
     await db.snapshots.insert_one(snapshot_doc)
+    profile.pop("_id", None)
 
     return {
         "location": {
@@ -133,7 +126,10 @@ async def update_location(req: UpdateLocationRequest, user: dict = Depends(get_c
 
 
 @router.get("/search-cities")
-async def search_cities(query: str = Query(..., min_length=2)):
+async def search_cities(
+    query: str = Query(..., min_length=2),
+    user: dict = Depends(get_current_user)
+):
     """Live city geocoding search powered by Open-Meteo Geocoding API."""
     url = f"https://geocoding-api.open-meteo.com/v1/search?name={query}&count=6&language=en&format=json"
     try:

@@ -8,10 +8,7 @@ export const Navbar = ({
   onOpenProfile,
   onToggleNotifications,
   unreadCount = 0,
-  personas = [],
-  activePersonaId,
-  onSelectPersona,
-  isLoadingPersona = false
+  onLogout
 }) => {
   return (
     <header style={{
@@ -178,6 +175,25 @@ export const Navbar = ({
               </div>
             </div>
           </button>
+
+          {onLogout && (
+            <button
+              onClick={onLogout}
+              style={{
+                padding: '5px 12px',
+                borderRadius: '999px',
+                border: '1px solid #e2e8f0',
+                background: '#f8fafc',
+                fontSize: '0.74rem',
+                fontWeight: 600,
+                color: '#64748b',
+                cursor: 'pointer'
+              }}
+              title="Sign Out"
+            >
+              Sign Out
+            </button>
+          )}
         </div>
       </div>
     </header>
