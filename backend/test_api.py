@@ -7,7 +7,7 @@ BASE_URL = "http://127.0.0.1:8000"
 def log(msg):
     print(msg, flush=True)
 
-def test_endpoint(name, path, method="GET", body=None, headers=None):
+def test_endpoint(name, path, method="GET", body=None, headers=None, expected_status=200):
     headers = headers or {}
     url = f"{BASE_URL}{path}"
     data = json.dumps(body).encode() if body else None
@@ -24,6 +24,12 @@ def test_endpoint(name, path, method="GET", body=None, headers=None):
             except Exception:
                 log(f"PASS: {name} (HTML/Text, {len(res_body)} bytes)")
                 return res_body
+    except urllib.error.HTTPError as he:
+        if he.code == expected_status:
+            log(f"PASS: {name} (Expected Status: {he.code})")
+            return {"status": he.code, "expected": True}
+        log(f"FAIL: {name} - Status: {he.code} (Expected {expected_status})")
+        return None
     except Exception as e:
         log(f"FAIL: {name} - Error: {e}")
         return None
@@ -120,4 +126,27 @@ if email_test:
     dispatch = email_test.get("dispatch", {})
     print(f"  -> Email Dispatch Result: {dispatch.get('status')} to {dispatch.get('recipient')}")
 
+# 13. Reverse Geocode Resolution
+geo_test = test_endpoint("GET /api/geocode/reverse", "/api/geocode/reverse?lat=28.6139&lon=77.2090")
+if geo_test:
+    print(f"  -> Reverse Geocoded Label: {geo_test.get('label')} (City: {geo_test.get('city')}, Country: {geo_test.get('country')})")
+
+# 14. Fast2SMS OTP Verification Gateway
+otp_send = test_endpoint("POST /api/sms/send-otp", "/api/sms/send-otp", method="POST", body={"phone": "9876543210"})
+if otp_send:
+    print(f"  -> Fast2SMS Send OTP Status: {otp_send.get('dispatch_status') or otp_send.get('message')}")
+    debug_code = otp_send.get("otp_debug")
+    if debug_code:
+        otp_verify = test_endpoint("POST /api/sms/verify-otp", "/api/sms/verify-otp", method="POST", body={"phone": "9876543210", "otp": debug_code}, headers={"Authorization": f"Bearer {token}"})
+        if otp_verify:
+            print(f"  -> Fast2SMS Verify OTP Status: {otp_verify.get('message')} (Verified: {otp_verify.get('phone_verified')})")
+
+# 15. Unauthenticated User-Centric Check
+unauth_me = test_endpoint("GET /api/me (Unauthenticated -> 401)", "/api/me", expected_status=401)
+print(f"  -> Unauthenticated /api/me expected 401: {unauth_me.get('expected')}")
+unauth_dash = test_endpoint("GET /api/dashboard (Unauthenticated Landing Feed)", "/api/dashboard")
+if unauth_dash:
+    print(f"  -> Landing Dashboard Authenticated Status: {unauth_dash.get('authenticated')} (User: {unauth_dash.get('user')})")
+
 print("\n=== ALL SYSTEM VERIFICATION CHECKS COMPLETED SUCCESSFULLY ===")
+

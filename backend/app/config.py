@@ -30,11 +30,16 @@ class Settings(BaseSettings):
     MONGO_URI: str = ""
     MONGO_DB_NAME: str = "weather_health_db"
 
-    # LLM Providers (Groq / Gemini)
+    # Air Quality Station API
+    WAQI_TOKEN: str = "579b464db66ec23bdd00000146c3efd7dd2144ac5e2dec921ad08e50"
+
+    # LLM Providers (Groq / Gemini / HF)
     GROQ_API_KEY: str = ""
     GROQ_MODEL: str = "llama-3.3-70b-versatile"
     GEMINI_API_KEY: str = ""
     GEMINI_MODEL: str = "gemini-1.5-flash"
+    HF_TOKEN: str = ""
+    HF_MODEL: str = "Qwen/Qwen2.5-72B-Instruct"
 
     # Notifications
     SMTP_HOST: str = "smtp.gmail.com"

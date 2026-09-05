@@ -41,17 +41,16 @@ AeroHealth features a minimalist aesthetic inspired by Apple Weather and Apple H
 
 | Feature | Description |
 | :--- | :--- |
-| **Atmospheric Hero Card** | Live geolocation (`📍 Bhopal, India`), real-time weather metrics (Humidity, Wind, UV Index, Visibility), and live freshening ticker (`⏱ Updated Xs ago`). |
-| **Your Health Today** | Circular radial arc gauge displaying personalized composite risk (`62 / 100`) and clinical rationale. |
-| **Air Quality Meter** | Semi-circular gauge showing US AQI and category (`Unhealthy for sensitive groups`) with pollutant breakdown tiles (`PM2.5`, `PM10`, `NO2`, `O3`). |
-| **Hourly & 7-Day Forecast** | Horizontal scrolling forecast carousel showing temperatures, weather icons, and AQI status pills. |
-| **Why is my risk different?** | Explainability matrix displaying active environmental contributors alongside personalized health multipliers. |
-| **"Same air. Different risk."** | Side-by-side comparative analysis demonstrating how identical atmospheric conditions create vastly different risks for different personas. |
-| **Interactive What-If Simulator** | Real-time sliders allowing users to stress-test their risk response to severe AQI spikes or heatwaves. |
-| **Weekly Trends & Trajectory** | Smooth SVG risk curve, threshold safety marker, environmental factor comparison (+58% PM2.5), and risk distribution donut chart. |
-| **3-Part Structured Alerts** | Every alert clearly answers: *1. What happened?*, *2. Why it matters?*, and *3. What should I do?*. |
-| **Real Gmail SMTP Dispatches** | Built-in email dispatch engine delivering real formatted security/health alerts to the user's inbox via Gmail SMTP. |
-| **3-Step Health Profile Onboarding** | Apple Health-style progressive setup (Demographics ➔ Clinical Conditions ➔ Sensitivity & Notification channels). |
+| **Dedicated Minimalist Landing Page** | Clean Apple-style consumer landing page for unauthenticated visitors featuring live Open-Meteo previews, value proposition, and official Google OAuth sign-in. |
+| **100% User-Centric Real Data** | Only the authenticated user's real data and health profile are displayed. Zero synthetic demo personas forced into user profiles. |
+| **GPS Geolocation & Reverse Geocoding** | Seamless browser GPS coordinates capture (`navigator.geolocation`) automatically reverse-geocoded to locality, city, and state via `/api/geocode/reverse`. |
+| **Live Open-Meteo Telemetry** | Real-time temperature, humidity, wind, UV index, PM2.5, PM10, NO2, and O3 measurements with zero mock fallback. |
+| **Fast2SMS Mobile OTP Verification** | Real 6-digit OTP verification via Fast2SMS gateway (`/api/sms/send-otp` & `/api/sms/verify-otp`) ensuring validated delivery of critical SMS health advisories. |
+| **Two-Tier Clinical Safety Architecture** | Deterministic clinical risk multipliers (Asthma `1.50×`, Cardiac `1.40×`, Age `1.30×`, Outdoor Exposure `1.25×`) paired with generative plain-English LLM advisories. |
+| **Interactive What-If Simulator** | Real-time sliders allowing users to stress-test their physiological response to severe AQI spikes or heatwaves. |
+| **Weekly Trends & Trajectory** | Smooth SVG risk curve, threshold safety marker, environmental factor comparison (+58% PM2.5), and risk distribution chart. |
+| **Gmail SMTP Verified Dispatches** | Built-in email dispatch engine delivering real formatted security/health alerts to the user's inbox via Gmail SMTP TLS. |
+| **MongoDB Atlas Persistence** | Cloud database persistence across user accounts, clinical profiles, historical snapshots, and alert audit logs. |
 
 ---
 

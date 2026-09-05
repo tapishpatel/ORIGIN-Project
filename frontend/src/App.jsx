@@ -9,74 +9,140 @@ import { HistoryTrends } from './components/HistoryTrends';
 import { ProfileModal } from './components/ProfileModal';
 import { NotificationDrawer } from './components/NotificationDrawer';
 import { OnboardingForm } from './components/OnboardingForm';
+import { LandingPage } from './components/LandingPage';
+import { AuthModal } from './components/AuthModal';
+import { SmartRouteExposure } from './components/SmartRouteExposure';
 
 export function App() {
   const [activeTab, setActiveTab] = useState('home');
+  const [isAuthenticated, setIsAuthenticated] = useState(Boolean(getAuthToken()));
+  const [currentUser, setCurrentUser] = useState(null);
+  const [currentProfile, setCurrentProfile] = useState(null);
   const [dashboardData, setDashboardData] = useState(null);
-  const [personas, setPersonas] = useState([]);
-  const [activePersonaId, setActivePersonaId] = useState('');
   const [historyData, setHistoryData] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [isForcedFallback, setIsForcedFallback] = useState(false);
   const [isProfileOpen, setIsProfileOpen] = useState(false);
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
+  const [needsOnboarding, setNeedsOnboarding] = useState(false);
   const [toastMessage, setToastMessage] = useState('');
-
-  if (window.location.pathname === '/form') {
-    return <OnboardingForm />;
-  }
+  const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
+  const [authModalMode, setAuthModalMode] = useState('login');
 
   const showToast = (msg) => {
     setToastMessage(msg);
     setTimeout(() => setToastMessage(''), 4000);
   };
 
-  const loadData = async (tokenOverride = null, forceFallback = isForcedFallback) => {
-    try {
-      if (tokenOverride) setAuthToken(tokenOverride);
-
-      const [pList, data, hData] = await Promise.all([
-        api.getPersonas().catch(() => []),
-        api.getDashboard(undefined, undefined, undefined, forceFallback),
-        api.getHistory(7).catch(() => null)
-      ]);
-
-      setPersonas(pList || []);
-      setDashboardData(data);
-      setHistoryData(hData);
-    } catch (err) {
-      console.error('Initial data load failed:', err);
-      showToast('Error connecting to backend engine');
-    } finally {
-      setIsLoading(false);
-      setIsRefreshing(false);
-    }
-  };
-
+  // 1. Check & Synchronize Auth Token from OAuth Callback or Local Storage
   useEffect(() => {
     const urlParams = new URLSearchParams(window.location.search);
-    const tok = urlParams.get('token');
-    if (tok) {
-      const name = urlParams.get('name') || 'Google User';
-      showToast(`Welcome ${name}`);
-      loadData(tok);
+    const tokenFromUrl = urlParams.get('token');
+    const loginType = urlParams.get('login');
+    const nameFromUrl = urlParams.get('name');
+
+    if (tokenFromUrl) {
+      setAuthToken(tokenFromUrl);
+      setIsAuthenticated(true);
+      // Clean query parameters from URL without reloading
+      window.history.replaceState({}, document.title, window.location.pathname);
+      showToast(`Welcome ${nameFromUrl || 'to AeroHealth'}!`);
+      loadUserDataAndDashboard(tokenFromUrl);
+    } else if (getAuthToken()) {
+      setIsAuthenticated(true);
+      loadUserDataAndDashboard();
     } else {
-      loadData();
+      setIsAuthenticated(false);
+      setIsLoading(false);
     }
   }, []);
 
-  const handleSelectPersona = async (personaId) => {
-    setActivePersonaId(personaId);
-    setIsRefreshing(true);
+  const loadUserDataAndDashboard = async (tokenOverride = null, forceFallback = isForcedFallback) => {
     try {
-      const loginRes = await api.demoLogin(personaId);
-      setAuthToken(loginRes.access_token);
-      await loadData(loginRes.access_token);
-      showToast(`Switched to ${loginRes.user.name}`);
+      if (tokenOverride) setAuthToken(tokenOverride);
+
+      // Verify authenticated user
+      const meRes = await api.getMe().catch((err) => {
+        console.warn('Auth validation check:', err);
+        return null;
+      });
+
+      if (!meRes || !meRes.authenticated) {
+        // Token invalid or unauthenticated
+        setAuthToken('');
+        setIsAuthenticated(false);
+        setIsLoading(false);
+        return;
+      }
+
+      setIsAuthenticated(true);
+      setCurrentUser(meRes.user);
+      setCurrentProfile(meRes.profile);
+
+      // Check if user needs onboarding (empty profile or missing conditions)
+      if (!meRes.profile || !meRes.profile.conditions || meRes.profile.conditions.length === 0) {
+        setNeedsOnboarding(true);
+      }
+
+      // Check user location and auto-detect via network IP or GPS if missing or default
+      let targetLat = meRes.profile?.location?.lat;
+      let targetLon = meRes.profile?.location?.lon;
+      let targetLabel = meRes.profile?.location?.label;
+
+      if (!targetLat || !targetLon || targetLabel === 'New Delhi, Delhi' || targetLabel === 'Current Location') {
+        try {
+          const autoLoc = await api.autoDetectLocation();
+          if (autoLoc && autoLoc.lat && autoLoc.lon) {
+            targetLat = autoLoc.lat;
+            targetLon = autoLoc.lon;
+            targetLabel = autoLoc.label;
+            api.updateLocation(autoLoc).catch(() => {});
+          }
+        } catch (e) {
+          console.warn('Auto IP geocoding error:', e);
+        }
+
+        // Also attempt high-accuracy GPS refinement if user permits
+        if (navigator.geolocation) {
+          navigator.geolocation.getCurrentPosition(
+            async (pos) => {
+              try {
+                const { latitude, longitude } = pos.coords;
+                const geo = await api.reverseGeocode(latitude, longitude);
+                const locObj = {
+                  lat: latitude,
+                  lon: longitude,
+                  label: geo.label || `${latitude.toFixed(2)}, ${longitude.toFixed(2)}`,
+                  city: geo.city || 'Current Location',
+                  country: geo.country || 'India',
+                };
+                await api.updateLocation(locObj);
+                const updatedDash = await api.getDashboard(latitude, longitude, locObj.label, forceFallback);
+                setDashboardData(updatedDash);
+                showToast(`📍 Location: ${locObj.label}`);
+              } catch (e) {
+                console.warn('Auto-geocoding error:', e);
+              }
+            },
+            () => {},
+            { timeout: 5000 }
+          );
+        }
+      }
+
+      const [data, hData] = await Promise.all([
+        api.getDashboard(targetLat, targetLon, targetLabel, forceFallback),
+        api.getHistory(7).catch(() => null)
+      ]);
+
+      setDashboardData(data);
+      setHistoryData(hData);
     } catch (err) {
-      console.error('Persona switch failed', err);
-      showToast('Failed to switch persona');
+      console.error('Data load error:', err);
+      showToast('Error syncing with live environmental feed');
+    } finally {
+      setIsLoading(false);
       setIsRefreshing(false);
     }
   };
@@ -85,8 +151,8 @@ export function App() {
     const next = !isForcedFallback;
     setIsForcedFallback(next);
     setIsRefreshing(true);
-    await loadData(null, next);
-    showToast(next ? 'Fallback simulation active' : 'Live Open-Meteo feeds active');
+    await loadUserDataAndDashboard(null, next);
+    showToast(next ? 'Simulating sensor fallback mode' : 'Live Open-Meteo telemetry active');
   };
 
   const handleLocationSelect = async (loc) => {
@@ -96,6 +162,8 @@ export function App() {
         lat: loc.lat,
         lon: loc.lon,
         label: loc.label,
+        city: loc.city || '',
+        country: loc.country || '',
       });
       const data = await api.getDashboard(loc.lat, loc.lon, loc.label, isForcedFallback);
       setDashboardData(data);
@@ -110,7 +178,7 @@ export function App() {
 
   const handleRefresh = async () => {
     setIsRefreshing(true);
-    await loadData();
+    await loadUserDataAndDashboard();
     showToast('Data refreshed');
   };
 
@@ -118,8 +186,9 @@ export function App() {
     try {
       await api.updateProfile(updatedData);
       setIsProfileOpen(false);
-      handleRefresh();
-      showToast('Profile saved · Risk recalculated');
+      setNeedsOnboarding(false);
+      await handleRefresh();
+      showToast('Profile saved · Health risk recalculated');
     } catch (err) {
       console.error('Save profile failed', err);
       showToast('Failed to save profile');
@@ -130,14 +199,16 @@ export function App() {
     setIsRefreshing(true);
     try {
       const res = await api.generateAdvisory(overrides);
-      setDashboardData((prev) => ({
-        ...prev,
-        risk: res.risk,
-        advisory: res.advisory,
-      }));
-      const hData = await api.getHistory(7);
-      setHistoryData(hData);
-      showToast('Scenario simulated');
+      if (res) {
+        setDashboardData((prev) => ({
+          ...prev,
+          risk: res.risk || prev?.risk,
+          advisory: res.advisory || prev?.advisory,
+        }));
+        const hData = await api.getHistory(7);
+        setHistoryData(hData);
+        showToast('Scenario recalculated');
+      }
       return res;
     } catch (err) {
       console.error('Simulation failed', err);
@@ -148,12 +219,70 @@ export function App() {
     }
   };
 
-  const handleTriggerScheduler = async () => {
+  const handleRegenerateAdvisory = async () => {
+    setIsRefreshing(true);
     try {
-      await api.triggerScheduler();
+      showToast('Synthesizing fresh AI advisory with Groq / LLM…');
+      const res = await api.generateAdvisory({ dispatch: false });
+      if (res?.advisory) {
+        setDashboardData((prev) => ({
+          ...prev,
+          advisory: res.advisory,
+          risk: res.risk || prev?.risk,
+        }));
+        showToast(`AI Advisory updated (${res.advisory.engine_mode || 'AI Model'})`);
+      }
+    } catch (err) {
+      console.error('Regenerate advisory failed', err);
+      showToast('Failed to regenerate advisory');
+    } finally {
+      setIsRefreshing(false);
+    }
+  };
+
+  const handleDispatchCustomAlert = async () => {
+    setIsRefreshing(true);
+    try {
+      showToast('Generating and dispatching customized health alert…');
+      const res = await api.generateAdvisory({ dispatch: true });
+      if (res?.advisory) {
+        setDashboardData((prev) => ({
+          ...prev,
+          advisory: res.advisory,
+          risk: res.risk || prev?.risk,
+        }));
+      }
       const hData = await api.getHistory(7);
       setHistoryData(hData);
-      showToast('Background check fired');
+      showToast('Custom health alert dispatched and recorded in audit log');
+    } catch (err) {
+      console.error('Dispatch alert failed', err);
+      showToast('Dispatch failed');
+    } finally {
+      setIsRefreshing(false);
+    }
+  };
+
+  const handleFetchHistoryDays = async (days = 7) => {
+    try {
+      const hData = await api.getHistory(days);
+      setHistoryData(hData);
+    } catch (err) {
+      console.error('Fetch history failed', err);
+    }
+  };
+
+  const handleTriggerScheduler = async () => {
+    try {
+      showToast('Triggering background clinical evaluation…');
+      const res = await api.triggerScheduler();
+      const hData = await api.getHistory(7);
+      setHistoryData(hData);
+      if (res?.triggered_alert) {
+        showToast('Threshold trigger active · Alert evaluated and dispatched');
+      } else {
+        showToast('Background health evaluation fired (No acute spike)');
+      }
     } catch (err) {
       console.error('Scheduler trigger failed', err);
       showToast('Scheduler trigger failed');
@@ -162,8 +291,9 @@ export function App() {
 
   const handleSendTestEmail = async () => {
     try {
-      showToast('Dispatching via Gmail SMTP…');
-      const res = await api.sendTestEmail('tornovdutta@gmail.com');
+      showToast('Dispatching alert via Gmail SMTP…');
+      const targetEmail = currentUser?.email || 'tornovdutta@gmail.com';
+      const res = await api.sendTestEmail(targetEmail);
       if (res?.dispatch?.status?.includes('delivered')) {
         showToast(`Delivered to ${res.dispatch.recipient}`);
       } else {
@@ -178,10 +308,59 @@ export function App() {
   };
 
   const handleLogout = () => {
-    localStorage.removeItem('aero_auth_token');
-    window.location.href = '/';
+    setAuthToken('');
+    setIsAuthenticated(false);
+    setCurrentUser(null);
+    setCurrentProfile(null);
+    setDashboardData(null);
+    setHistoryData(null);
+    showToast('Logged out successfully');
   };
 
+  // View: Unauthenticated Visitor -> Render Landing Page with AuthModal
+  if (!isAuthenticated && !isLoading) {
+    return (
+      <>
+        <LandingPage
+          onLogin={() => {
+            setAuthModalMode('login');
+            setIsAuthModalOpen(true);
+          }}
+          onOpenAuth={(mode) => {
+            setAuthModalMode(mode);
+            setIsAuthModalOpen(true);
+          }}
+        />
+        <AuthModal
+          isOpen={isAuthModalOpen}
+          onClose={() => setIsAuthModalOpen(false)}
+          initialMode={authModalMode}
+          onAuthSuccess={(authData) => {
+            setIsAuthModalOpen(false);
+            setIsAuthenticated(true);
+            setIsLoading(true);
+            showToast(`Welcome ${authData?.user?.name || ''}!`);
+            loadUserDataAndDashboard(authData?.access_token);
+          }}
+        />
+      </>
+    );
+  }
+
+  // View: Newly Signed In User Needing Onboarding
+  if (isAuthenticated && needsOnboarding) {
+    return (
+      <OnboardingForm
+        onComplete={(newProfile) => {
+          setNeedsOnboarding(false);
+          setCurrentProfile(newProfile);
+          loadUserDataAndDashboard();
+        }}
+      />
+    );
+  }
+
+  // View: Initial Loading State
   if (isLoading && !dashboardData) {
     return (
       <div style={{
@@ -201,7 +380,9 @@ export function App() {
           borderRadius: '50%',
           animation: 'spin 0.8s linear infinite'
         }} />
-        <span style={{ fontSize: '0.95rem', fontWeight: 600, letterSpacing: '-0.02em' }}>Loading AeroHealth…</span>
+        <span style={{ fontSize: '0.95rem', fontWeight: 600, letterSpacing: '-0.02em' }}>
+          Syncing AeroHealth Telemetry…
+        </span>
       </div>
     );
   }
@@ -210,32 +391,32 @@ export function App() {
   const aqi = dashboardData?.aqi || {};
   const risk = dashboardData?.risk || {};
   const adv = dashboardData?.advisory || {};
-  const user = dashboardData?.user || {};
-  const profile = dashboardData?.profile || {};
-  const loc = dashboardData?.location || {};
+  const user = currentUser || dashboardData?.user || {};
+  const profile = currentProfile || dashboardData?.profile || {};
+  const loc = dashboardData?.location || profile?.location || {};
 
-  const currentTemp = Math.round(weather?.temperature || 31);
-  const currentAqi = Math.round(aqi?.aqi || 147);
+  const currentTemp = Math.round(weather?.temperature || 29);
+  const currentAqi = Math.round(aqi?.aqi || 120);
 
   const hourlyData = [
     { time: 'Now', temp: currentTemp, aqi: currentAqi, icon: '⛅', isCurrent: true },
-    { time: '12 PM', temp: currentTemp + 2, aqi: currentAqi + 18, icon: '☀️' },
-    { time: '1 PM', temp: currentTemp + 3, aqi: currentAqi + 26, icon: '☀️' },
-    { time: '2 PM', temp: currentTemp + 4, aqi: currentAqi + 32, icon: '☀️' },
-    { time: '3 PM', temp: currentTemp + 3, aqi: currentAqi + 28, icon: '☀️' },
-    { time: '4 PM', temp: currentTemp + 2, aqi: currentAqi + 14, icon: '⛅' },
-    { time: '5 PM', temp: currentTemp, aqi: currentAqi - 8, icon: '⛅' },
-    { time: '6 PM', temp: currentTemp - 2, aqi: currentAqi - 22, icon: '🌙' },
+    { time: '12 PM', temp: currentTemp + 2, aqi: currentAqi + 14, icon: '☀️' },
+    { time: '1 PM', temp: currentTemp + 3, aqi: currentAqi + 22, icon: '☀️' },
+    { time: '2 PM', temp: currentTemp + 4, aqi: currentAqi + 28, icon: '☀️' },
+    { time: '3 PM', temp: currentTemp + 3, aqi: currentAqi + 24, icon: '☀️' },
+    { time: '4 PM', temp: currentTemp + 2, aqi: currentAqi + 12, icon: '⛅' },
+    { time: '5 PM', temp: currentTemp, aqi: currentAqi - 6, icon: '⛅' },
+    { time: '6 PM', temp: currentTemp - 2, aqi: currentAqi - 18, icon: '🌙' },
   ];
 
   const dailyForecast = [
-    { day: 'Today', high: currentTemp + 3, low: currentTemp - 6, aqi: currentAqi, icon: '⛅' },
-    { day: 'Sat', high: currentTemp + 2, low: currentTemp - 5, aqi: 112, icon: '☀️' },
-    { day: 'Sun', high: currentTemp + 4, low: currentTemp - 4, aqi: 98, icon: '⛅' },
-    { day: 'Mon', high: currentTemp + 1, low: currentTemp - 7, aqi: 86, icon: '🌧️' },
-    { day: 'Tue', high: currentTemp, low: currentTemp - 6, aqi: 74, icon: '⛅' },
-    { day: 'Wed', high: currentTemp + 2, low: currentTemp - 5, aqi: 68, icon: '☀️' },
-    { day: 'Thu', high: currentTemp + 3, low: currentTemp - 4, aqi: 72, icon: '☀️' },
+    { day: 'Today', high: currentTemp + 3, low: currentTemp - 5, aqi: currentAqi, icon: '⛅' },
+    { day: 'Sat', high: currentTemp + 2, low: currentTemp - 4, aqi: 110, icon: '☀️' },
+    { day: 'Sun', high: currentTemp + 4, low: currentTemp - 3, aqi: 95, icon: '⛅' },
+    { day: 'Mon', high: currentTemp + 1, low: currentTemp - 6, aqi: 82, icon: '🌧️' },
+    { day: 'Tue', high: currentTemp, low: currentTemp - 5, aqi: 76, icon: '⛅' },
+    { day: 'Wed', high: currentTemp + 2, low: currentTemp - 4, aqi: 68, icon: '☀️' },
+    { day: 'Thu', high: currentTemp + 3, low: currentTemp - 3, aqi: 72, icon: '☀️' },
   ];
 
   const alertsList = historyData?.alerts || historyData?.audit_notifications || [];
@@ -250,7 +431,7 @@ export function App() {
         onOpenProfile={() => setIsProfileOpen(true)}
         onToggleNotifications={() => setIsDrawerOpen(true)}
         unreadCount={alertsList.length}
-        onLogout={getAuthToken() ? handleLogout : undefined}
+        onLogout={handleLogout}
       />
 
       <main className="app-container" style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
@@ -289,7 +470,7 @@ export function App() {
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '20px' }}>
               <div className="premium-card">
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
-                  <h3 style={{ fontSize: '0.92rem', fontWeight: 700, color: '#0f172a', margin: 0, letterSpacing: '-0.01em' }}>Hourly Forecast</h3>
+                  <h3 style={{ fontSize: '0.92rem', fontWeight: 700, color: '#0f172a', margin: 0, letterSpacing: '-0.01em' }}>Hourly Telemetry</h3>
                   <span style={{ fontSize: '0.72rem', color: '#64748b', fontWeight: 600 }}>Next 8 hours →</span>
                 </div>
                 <div className="horizontal-scroll">
@@ -330,8 +511,8 @@ export function App() {
 
               <div className="premium-card">
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
-                  <h3 style={{ fontSize: '0.92rem', fontWeight: 700, color: '#0f172a', margin: 0, letterSpacing: '-0.01em' }}>7-Day Forecast</h3>
-                  <span style={{ fontSize: '0.72rem', color: '#64748b', fontWeight: 600 }}>Weekly →</span>
+                  <h3 style={{ fontSize: '0.92rem', fontWeight: 700, color: '#0f172a', margin: 0, letterSpacing: '-0.01em' }}>Weekly Outlook</h3>
+                  <span style={{ fontSize: '0.72rem', color: '#64748b', fontWeight: 600 }}>Forecast →</span>
                 </div>
                 <div className="horizontal-scroll">
                   {dailyForecast.map((d, di) => (
@@ -362,22 +543,34 @@ export function App() {
 
               <div className="premium-card" style={{ display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
                 <div>
-                  <h3 style={{ fontSize: '0.92rem', fontWeight: 700, color: '#0f172a', margin: '0 0 8px 0', letterSpacing: '-0.01em' }}>Today's Insight</h3>
+                  <h3 style={{ fontSize: '0.92rem', fontWeight: 700, color: '#0f172a', margin: '0 0 8px 0', letterSpacing: '-0.01em' }}>
+                    Personal Vulnerability Status
+                  </h3>
                   <p style={{ fontSize: '0.82rem', color: '#475569', lineHeight: 1.45, margin: 0 }}>
-                    Air quality improving over the next 3 days with increased wind circulation.
+                    {profile?.conditions?.length > 0 && !profile.conditions.includes('none')
+                      ? `Active profile monitoring for ${profile.conditions.join(', ')}. Multipliers computed deterministically.`
+                      : 'Baseline profile active. Configure any respiratory or cardiac sensitivities in settings.'}
                   </p>
                 </div>
-                <div style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between', marginTop: '16px' }}>
-                  <div style={{ display: 'flex', alignItems: 'flex-end', gap: '6px', height: '40px' }}>
-                    <div style={{ width: '8px', height: '36px', background: '#f59e0b', borderRadius: '3px' }} />
-                    <div style={{ width: '8px', height: '28px', background: '#38bdf8', borderRadius: '3px' }} />
-                    <div style={{ width: '8px', height: '22px', background: '#10b981', borderRadius: '3px' }} />
-                    <div style={{ width: '8px', height: '16px', background: '#10b981', borderRadius: '3px' }} />
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: '16px' }}>
+                  <div style={{ fontSize: '0.74rem', color: '#64748b' }}>
+                    SMS Alerts: <strong>{profile?.phone_verified ? 'Active (Fast2SMS)' : 'Unverified'}</strong>
                   </div>
-                  <div style={{ textAlign: 'right' }}>
-                    <div style={{ fontSize: '1.15rem', fontWeight: 700, color: '#059669', lineHeight: 1, letterSpacing: '-0.02em' }}>↓ 32%</div>
-                    <div style={{ fontSize: '0.66rem', color: '#64748b' }}>vs last week</div>
-                  </div>
+                  <button
+                    onClick={() => setIsProfileOpen(true)}
+                    style={{
+                      padding: '5px 12px',
+                      borderRadius: '999px',
+                      background: '#f1f5f9',
+                      border: '1px solid #e2e8f0',
+                      fontSize: '0.74rem',
+                      fontWeight: 600,
+                      color: '#0f172a',
+                      cursor: 'pointer'
+                    }}
+                  >
+                    Edit Profile
+                  </button>
                 </div>
               </div>
             </div>
@@ -396,8 +589,12 @@ export function App() {
               <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
                 <span style={{ fontSize: '1.2rem' }}>🌿</span>
                 <div>
-                  <div style={{ fontSize: '0.9rem', fontWeight: 700, color: '#0f172a', letterSpacing: '-0.01em' }}>Small changes. Healthier tomorrows.</div>
-                  <div style={{ fontSize: '0.76rem', color: '#64748b' }}>Personalized environmental guidance for a more resilient you.</div>
+                  <div style={{ fontSize: '0.9rem', fontWeight: 700, color: '#0f172a', letterSpacing: '-0.01em' }}>
+                    Personalized Clinical Risk Assessment
+                  </div>
+                  <div style={{ fontSize: '0.76rem', color: '#64748b' }}>
+                    Calculated from your physiological sensitivities and real-time atmospheric measurements.
+                  </div>
                 </div>
               </div>
               <button
@@ -413,7 +610,7 @@ export function App() {
                   cursor: 'pointer'
                 }}
               >
-                Explore Advisory →
+                View Full Advisory →
               </button>
             </div>
           </>
@@ -428,13 +625,24 @@ export function App() {
             location={loc}
             aqiData={aqi}
             weather={weather}
+            historyData={historyData}
             onSimulate={handleSimulateScenario}
+            onRegenerateAdvisory={handleRegenerateAdvisory}
+            onDispatchAlert={handleDispatchCustomAlert}
             isGenerating={isRefreshing}
           />
         )}
 
         {activeTab === 'trends' && (
-          <HistoryTrends historyData={historyData} />
+          <HistoryTrends
+            historyData={historyData}
+            currentRisk={risk}
+            currentAqi={aqi}
+            currentWeather={weather}
+            profile={profile}
+            location={loc}
+            onRefreshDays={handleFetchHistoryDays}
+          />
         )}
 
         {activeTab === 'alerts' && (
@@ -445,7 +653,7 @@ export function App() {
                   Alert Timeline
                 </h1>
                 <p style={{ fontSize: '0.84rem', color: '#64748b', marginTop: '4px', marginBottom: 0 }}>
-                  Automated clinical evaluations.
+                  Automated clinical evaluations and delivered notifications.
                 </p>
               </div>
 
@@ -478,7 +686,7 @@ export function App() {
                     cursor: 'pointer'
                   }}
                 >
-                  Dispatch Email
+                  Dispatch Test Email
                 </button>
               </div>
             </div>
@@ -488,7 +696,7 @@ export function App() {
                 <div style={{ fontSize: '1.8rem', marginBottom: '8px' }}>📬</div>
                 <div style={{ fontWeight: 700, fontSize: '1rem', color: '#0f172a' }}>No automated alerts dispatched yet</div>
                 <div style={{ fontSize: '0.82rem', marginTop: '4px' }}>
-                  Trigger a background check or dispatch a test alert.
+                  Trigger a background check or dispatch a test alert to verify delivery.
                 </div>
               </div>
             ) : (
@@ -526,7 +734,7 @@ export function App() {
                     </div>
 
                     <h3 style={{ fontSize: '1.02rem', fontWeight: 700, color: '#0f172a', marginBottom: '14px', letterSpacing: '-0.015em' }}>
-                      {item.subject || 'Aero Health Alert'}
+                      {item.subject || 'AeroHealth Alert'}
                     </h3>
 
                     <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '10px' }}>
@@ -535,7 +743,7 @@ export function App() {
                           What happened
                         </div>
                         <div style={{ fontSize: '0.8rem', color: '#334155', lineHeight: 1.4 }}>
-                          {item.preview || item.message || 'AQI exceeded clinical threshold.'}
+                          {item.preview || item.message || 'AQI exceeded personalized clinical threshold.'}
                         </div>
                       </div>
                       <div style={{ background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '10px', padding: '10px 12px' }}>
@@ -543,22 +751,22 @@ export function App() {
                           Why it matters
                         </div>
                         <div style={{ fontSize: '0.8rem', color: '#334155', lineHeight: 1.4 }}>
-                          Compounded sensitivity increases symptom risk.
+                          Compounded sensitivity increases pulmonary stress.
                         </div>
                       </div>
                       <div style={{ background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '10px', padding: '10px 12px' }}>
                         <div style={{ fontSize: '0.66rem', fontWeight: 700, color: '#065f46', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '4px' }}>
-                          What to do
+                          Recommended action
                         </div>
                         <div style={{ fontSize: '0.8rem', color: '#334155', lineHeight: 1.4 }}>
-                          Shift outdoor exertion from 11 AM – 4 PM.
+                          Shift strenuous outdoor exertion outside peak smog hours.
                         </div>
                       </div>
                     </div>
 
                     <div style={{ borderTop: '1px solid #f1f5f9', paddingTop: '10px', display: 'flex', justifyContent: 'space-between', fontSize: '0.72rem', color: '#94a3b8', marginTop: '12px' }}>
-                      <span>Trigger: clinical threshold</span>
-                      <span>{item.recipient || 'tornovdutta@gmail.com'}</span>
+                      <span>Trigger: Clinical threshold reached</span>
+                      <span>Recipient: {item.recipient || currentUser?.email || 'Registered User'}</span>
                     </div>
                   </div>
                 ))}
@@ -567,14 +775,23 @@ export function App() {
           </div>
         )}
 
+        {activeTab === 'route' && (
+          <SmartRouteExposure
+            profile={profile}
+            currentAqi={aqi}
+          />
+        )}
+
       </main>
 
       <ProfileModal
         isOpen={isProfileOpen}
         onClose={() => setIsProfileOpen(false)}
         profile={profile}
+        user={user}
         onSave={handleSaveProfile}
         isSaving={isRefreshing}
+        onLogout={handleLogout}
       />
 
       <NotificationDrawer

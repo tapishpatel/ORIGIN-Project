@@ -27,18 +27,16 @@ export const Navbar = ({
         alignItems: 'center',
         justifyContent: 'space-between'
       }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '32px' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '10px', cursor: 'pointer' }} onClick={() => onTabChange && onTabChange('home')}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+          {/* Logo */}
+          <div
+            style={{ display: 'flex', alignItems: 'center', gap: '10px', cursor: 'pointer' }}
+            onClick={() => onTabChange && onTabChange('home')}
+          >
             <div style={{
-              width: '30px',
-              height: '30px',
-              borderRadius: '9px',
-              background: '#ecfdf5',
-              border: '1px solid #a7f3d0',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              fontSize: '0.95rem'
+              width: '30px', height: '30px', borderRadius: '9px',
+              background: '#ecfdf5', border: '1px solid #a7f3d0',
+              display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.95rem'
             }}>
               🌿
             </div>
@@ -47,39 +45,73 @@ export const Navbar = ({
             </div>
           </div>
 
+          {/* ── Main nav pill ── */}
           <nav style={{
-            display: 'flex',
-            background: '#f1f5f9',
-            borderRadius: '999px',
-            padding: '3px',
-            border: '1px solid #e2e8f0'
+            display: 'flex', background: '#f1f5f9', borderRadius: '999px',
+            padding: '3px', border: '1px solid #e2e8f0'
           }}>
             {[
-              { id: 'home', label: 'Home' },
+              { id: 'home',     label: 'Home' },
               { id: 'advisory', label: 'Advisory' },
-              { id: 'trends', label: 'Trends' },
-              { id: 'alerts', label: 'Alerts' }
+              { id: 'trends',   label: 'Trends' },
+              { id: 'alerts',   label: 'Alerts' },
             ].map((tab) => (
               <button
                 key={tab.id}
                 onClick={() => onTabChange && onTabChange(tab.id)}
                 style={{
-                  padding: '6px 16px',
-                  fontSize: '0.84rem',
+                  padding: '6px 16px', fontSize: '0.84rem',
                   fontWeight: activeTab === tab.id ? 600 : 500,
                   color: activeTab === tab.id ? '#0f172a' : '#475569',
                   background: activeTab === tab.id ? '#ffffff' : 'transparent',
-                  border: 'none',
-                  borderRadius: '999px',
-                  cursor: 'pointer',
-                  boxShadow: activeTab === tab.id ? '0 1px 3px rgba(15, 23, 42, 0.06)' : 'none',
-                  letterSpacing: '-0.01em'
+                  border: 'none', borderRadius: '999px', cursor: 'pointer',
+                  boxShadow: activeTab === tab.id ? '0 1px 3px rgba(15,23,42,0.06)' : 'none',
+                  letterSpacing: '-0.01em', transition: 'all 0.15s',
                 }}
               >
                 {tab.label}
               </button>
             ))}
           </nav>
+
+          {/* ── Divider ── */}
+          <div style={{ width: '1px', height: '22px', background: '#e2e8f0', flexShrink: 0 }} />
+
+          {/* ── Route Planner — separate accent section ── */}
+          <button
+            onClick={() => onTabChange && onTabChange('route')}
+            style={{
+              display: 'flex', alignItems: 'center', gap: '7px',
+              padding: '6px 16px',
+              background: activeTab === 'route'
+                ? 'linear-gradient(135deg,#0f172a 0%,#1e3a5f 100%)'
+                : 'linear-gradient(135deg,#f0f9ff 0%,#e0f2fe 100%)',
+              border: activeTab === 'route' ? '1.5px solid #1e3a5f' : '1.5px solid #bae6fd',
+              borderRadius: '999px',
+              cursor: 'pointer',
+              transition: 'all 0.2s',
+              boxShadow: activeTab === 'route' ? '0 2px 8px rgba(15,23,42,0.18)' : '0 1px 4px rgba(2,132,199,0.1)',
+              flexShrink: 0,
+            }}
+          >
+            <span style={{ fontSize: '0.88rem' }}>🛣️</span>
+            <span style={{
+              fontSize: '0.83rem', fontWeight: 700, letterSpacing: '-0.01em',
+              color: activeTab === 'route' ? '#ffffff' : '#0369a1',
+            }}>
+              Route Planner
+            </span>
+            {activeTab !== 'route' && (
+              <span style={{
+                fontSize: '0.58rem', fontWeight: 700, color: '#0284c7',
+                background: '#dbeafe', border: '1px solid #93c5fd',
+                padding: '1px 6px', borderRadius: '999px', letterSpacing: '0.05em',
+                textTransform: 'uppercase',
+              }}>
+                New
+              </span>
+            )}
+          </button>
         </div>
 
         <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>

@@ -101,6 +101,140 @@ async def list_personas():
     ]
 
 
+class SignupRequest(BaseModel):
+    name: str = "Registered User"
+    email: str
+    password: str
+    age_group: str = "18-40"
+    conditions: List[str] = []
+    occupation: str = "office"
+    location: Optional[dict] = None
+    phone: Optional[str] = ""
+    notify_email: Optional[bool] = True
+    notify_sms: Optional[bool] = False
+    alert_sensitivity: str = "normal"
+
+
+class LoginRequest(BaseModel):
+    email: str
+    password: str
+
+
+@router.post("/signup")
+async def signup(req: SignupRequest):
+    """Registers a new user, saves their health profile, and returns an access token."""
+    email = req.email.strip().lower()
+    if not email or "@" not in email:
+        raise HTTPException(status_code=400, detail="A valid email address is required.")
+    if not req.password or len(req.password.strip()) < 4:
+        raise HTTPException(status_code=400, detail="Password must be at least 4 characters long.")
+
+    existing = await db.users.find_one({"email": email})
+    if existing and not existing.get("is_demo"):
+        raise HTTPException(status_code=400, detail="An account with this email already exists. Please sign in.")
+
+    import hashlib
+    import uuid
+    uid = f"user-{uuid.uuid4().hex[:10]}"
+    pwd_hash = hashlib.sha256(req.password.strip().encode("utf-8")).hexdigest()
+    now = datetime.now(timezone.utc)
+
+    user_doc = {
+        "id": uid,
+        "_id": uid,
+        "email": email,
+        "name": req.name.strip() or "User",
+        "password_hash": pwd_hash,
+        "picture": f"https://api.dicebear.com/7.x/avataaars/svg?seed={req.name.replace(' ', '')}",
+        "is_demo": False,
+        "created_at": now,
+    }
+    profile_doc = {
+        "user_id": uid,
+        "email": email,
+        "email_verified": True,
+        "age_group": req.age_group,
+        "conditions": req.conditions if req.conditions else ["none"],
+        "occupation": req.occupation,
+        "location": req.location or {
+            "lat": 28.6139,
+            "lon": 77.2090,
+            "label": "New Delhi, Delhi, India",
+            "city": "New Delhi",
+            "country": "India",
+        },
+        "notify_email": req.notify_email,
+        "notify_sms": req.notify_sms,
+        "phone": req.phone or "",
+        "alert_sensitivity": req.alert_sensitivity,
+        "updated_at": now,
+    }
+
+    await db.users.insert_one(user_doc)
+    await db.profiles.insert_one(profile_doc)
+
+    token = create_access_token(uid, email)
+    user_doc.pop("password_hash", None)
+    user_doc.pop("_id", None)
+    profile_doc.pop("_id", None)
+
+    return {
+        "access_token": token,
+        "token_type": "bearer",
+        "user": user_doc,
+        "profile": profile_doc,
+        "message": "Account created successfully",
+    }
+
+
+@router.post("/login")
+async def login(req: LoginRequest):
+    """Authenticates user with email and password."""
+    email = req.email.strip().lower()
+    if not email or not req.password:
+        raise HTTPException(status_code=400, detail="Please provide both email and password.")
+
+    # Check demo personas first
+    for p in DEMO_PERSONAS:
+        if p["email"].lower() == email:
+            token = f"token-{p['user_id']}"
+            return {
+                "access_token": token,
+                "token_type": "bearer",
+                "user": {
+                    "id": p["user_id"],
+                    "name": p["name"],
+                    "email": p["email"],
+                    "picture": p["picture"],
+                    "is_demo": True,
+                },
+                "profile": p["profile"],
+            }
+
+    user = await db.users.find_one({"email": email})
+    if not user:
+        raise HTTPException(status_code=401, detail="No account registered with this email address.")
+
+    import hashlib
+    pwd_hash = hashlib.sha256(req.password.strip().encode("utf-8")).hexdigest()
+    if user.get("password_hash") and user["password_hash"] != pwd_hash:
+        raise HTTPException(status_code=401, detail="Incorrect password. Please try again.")
+
+    profile = await db.profiles.find_one({"user_id": user["id"]})
+    token = create_access_token(user["id"], user["email"])
+    user.pop("password_hash", None)
+    user.pop("_id", None)
+    if profile:
+        profile.pop("_id", None)
+
+    return {
+        "access_token": token,
+        "token_type": "bearer",
+        "user": user,
+        "profile": profile,
+    }
+
+
 @router.post("/demo-login")
 async def demo_login(req: DemoLoginRequest):
     """Instant zero-friction login for any of the 4 demo personas."""
@@ -119,6 +253,7 @@ async def demo_login(req: DemoLoginRequest):
             "picture": persona["picture"],
             "is_demo": True,
         },
+        "profile": persona["profile"],
     }
 
 

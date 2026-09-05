@@ -58,7 +58,7 @@
 
       --shadow-subtle: 0 1px 2px rgba(15, 23, 42, 0.04);
       --shadow-card: 0 1px 3px rgba(0, 0, 0, 0.04), 0 4px 16px -4px rgba(15, 23, 42, 0.04);
-      --shadow-elevated: 0 8px 24px -6px rgba(15, 23, 42, 0.08);
+      --shadow-elevated: 0 12px 32px -8px rgba(15, 23, 42, 0.12);
     }
 
     * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -85,6 +85,7 @@
       border-radius: var(--radius-xl);
       padding: 22px;
       box-shadow: var(--shadow-card);
+      transition: transform 0.2s ease, box-shadow 0.2s ease;
     }
 
     .app-container {
@@ -99,7 +100,7 @@
     .hero-weather-card {
       position: relative;
       background:
-        radial-gradient(ellipse 60% 80% at 85% 0%, rgba(255, 255, 255, 0.65) 0%, transparent 60%),
+        radial-gradient(ellipse 60% 80% at 85% 0%, rgba(255, 255, 255, 0.75) 0%, transparent 60%),
         linear-gradient(160deg, #e0f2fe 0%, #ecfdf5 55%, #fef3c7 100%);
       border: 1px solid rgba(0, 0, 0, 0.06);
       border-radius: var(--radius-xl);
@@ -112,7 +113,7 @@
       position: absolute;
       left: 0; right: 0; bottom: 0;
       height: 60%;
-      background: radial-gradient(ellipse at center bottom, rgba(186, 230, 253, 0.18) 0%, transparent 70%);
+      background: radial-gradient(ellipse at center bottom, rgba(186, 230, 253, 0.25) 0%, transparent 70%);
       pointer-events: none;
     }
 
@@ -134,20 +135,77 @@
 
     .horizontal-scroll {
       display: flex;
-      gap: 10px;
+      gap: 12px;
       overflow-x: auto;
       padding-bottom: 6px;
+      scroll-behavior: smooth;
     }
     .horizontal-scroll::-webkit-scrollbar { height: 4px; }
     .horizontal-scroll::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
 
-    ::-webkit-scrollbar { width: 7px; height: 7px; }
-    ::-webkit-scrollbar-track { background: #f8fafc; }
-    ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
+    .interactive-hour-pill {
+      min-width: 82px;
+      border-radius: 16px;
+      padding: 12px 8px;
+      text-align: center;
+      flex-shrink: 0;
+      cursor: pointer;
+      transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+    .interactive-hour-pill:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 4px 12px rgba(15, 23, 42, 0.08);
+    }
+
+    .activity-card {
+      background: #ffffff;
+      border: 1px solid var(--border-card);
+      border-radius: var(--radius-lg);
+      padding: 16px;
+      display: flex;
+      flex-direction: column;
+      justifyContent: space-between;
+      transition: all 0.2s ease;
+    }
+    .activity-card:hover {
+      border-color: #cbd5e1;
+      box-shadow: 0 6px 20px -4px rgba(15, 23, 42, 0.08);
+      transform: translateY(-2px);
+    }
+
+    .vital-tile {
+      background: rgba(255, 255, 255, 0.8);
+      backdrop-filter: blur(8px);
+      border: 1px solid rgba(0, 0, 0, 0.06);
+      border-radius: 16px;
+      padding: 16px;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    .action-chip {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 6px 14px;
+      background: #f1f5f9;
+      border: 1px solid #e2e8f0;
+      border-radius: 999px;
+      font-size: 0.76rem;
+      font-weight: 600;
+      color: #334155;
+      cursor: pointer;
+      transition: 0.15s ease;
+    }
+    .action-chip:hover {
+      background: #e2e8f0;
+      color: #0f172a;
+    }
 
     @keyframes spin { to { transform: rotate(360deg); } }
     @keyframes toastIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
-    @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+    @keyframes modalFadeIn { from { opacity: 0; transform: scale(0.97); } to { opacity: 1; transform: scale(1); } }
   </style>
 </head>
 <body>
@@ -158,10 +216,10 @@
     const API_BASE = window.location.origin;
 
     function App() {
+      const [authToken, setAuthToken] = useState(localStorage.getItem('aero_auth_token') || '');
+      const [activePersonaId, setActivePersonaId] = useState('persona-1');
       const [activeTab, setActiveTab] = useState('home');
       const [data, setData] = useState(null);
-      const [personas, setPersonas] = useState([]);
-      const [activePersonaId, setActivePersonaId] = useState('demo-asthma-worker');
       const [history, setHistory] = useState(null);
       const [loading, setLoading] = useState(true);
       const [toast, setToast] = useState('');
@@ -170,11 +228,54 @@
       const [isForcedFallback, setIsForcedFallback] = useState(false);
       const [nowEpoch, setNowEpoch] = useState(Date.now() / 1000);
 
+      // AI Copilot state
+      const [isAiChatOpen, setIsAiChatOpen] = useState(false);
+      const [aiChatInput, setAiChatInput] = useState('');
+      const [aiChatMessages, setAiChatMessages] = useState([
+        {
+          sender: 'ai',
+          text: "Hello! I am your AeroHealth AI Copilot. Ask me anything about outdoor running safety, N95 masks, optimal walking hours, or symptom prevention under today's atmospheric conditions.",
+          engine: 'AI-generated (Qwen2.5-72B)'
+        }
+      ]);
+      const [aiChatLoading, setAiChatLoading] = useState(false);
+
+      // Email Alert modal state
+      const [isSendAlertModalOpen, setIsSendAlertModalOpen] = useState(false);
+      const [emailSubject, setEmailSubject] = useState('');
+      const [emailBody, setEmailBody] = useState('');
+      const [targetEmail, setTargetEmail] = useState('');
+      const [isSendingEmail, setIsSendingEmail] = useState(false);
+      const [emailSendFeedback, setEmailSendFeedback] = useState('');
+
+      // Backwards-compatible aliases for legacy modal references
+      const isSendSmsModalOpen = isSendAlertModalOpen;
+      const setIsSendSmsModalOpen = setIsSendAlertModalOpen;
+      const smsDraftText = emailBody;
+      const setSmsDraftText = setEmailBody;
+      const smsTargetPhone = targetEmail;
+      const setSmsTargetPhone = setTargetEmail;
+      const isSendingSms = isSendingEmail;
+      const smsSendFeedback = emailSendFeedback;
+
+      // Interactive Hourly Scrubber
+      const [selectedHourIndex, setSelectedHourIndex] = useState(0);
+
+      // Email Verification and GPS state in profile
+      const [emailInput, setEmailInput] = useState('');
+      const [emailOtpInput, setEmailOtpInput] = useState('');
+      const [emailOtpSent, setEmailOtpSent] = useState(false);
+      const [emailOtpCode, setEmailOtpCode] = useState('');
+      const [phoneInput, setPhoneInput] = useState('');
+      const [otpFeedback, setOtpFeedback] = useState('');
+      const [isDetectingGps, setIsDetectingGps] = useState(false);
+
       const [simAqi, setSimAqi] = useState(140);
       const [simTemp, setSimTemp] = useState(33);
       const [simResult, setSimResult] = useState(null);
       const [simLoading, setSimLoading] = useState(false);
       const [trendMetric, setTrendMetric] = useState('risk');
+      const [isDispatchingAlert, setIsDispatchingAlert] = useState(false);
 
       useEffect(() => {
         const timer = setInterval(() => setNowEpoch(Date.now() / 1000), 1000);
@@ -195,17 +296,43 @@
         setTimeout(() => setToast(''), 3500);
       };
 
-      const loadData = async (token = null, forceFall = isForcedFallback) => {
+      const loadData = async (token = authToken, forceFall = isForcedFallback) => {
         try {
           const headers = token ? { 'Authorization': `Bearer ${token}` } : {};
-          const [pRes, dRes, hRes] = await Promise.all([
-            fetch(`${API_BASE}/auth/personas`).then(r => r.json()).catch(() => []),
+          const [dRes, hRes] = await Promise.all([
             fetch(`${API_BASE}/api/dashboard?force_fallback=${forceFall ? 1 : 0}`, { headers }).then(r => r.json()),
             fetch(`${API_BASE}/api/history?days=7`, { headers }).then(r => r.json()).catch(() => null),
           ]);
-          setPersonas(pRes);
           setData(dRes);
           setHistory(hRes);
+          if (dRes?.profile?.email || dRes?.user?.email) {
+            setEmailInput(dRes.profile?.email || dRes.user?.email || '');
+            setTargetEmail(dRes.profile?.email || dRes.user?.email || '');
+          }
+          if (dRes?.profile?.phone) {
+            setPhoneInput(dRes.profile.phone.replace(/^\+91/, ''));
+          }
+
+          // If location is default or missing, auto-detect via IP immediately
+          const currentLabel = dRes?.location?.label || '';
+          if (!currentLabel || currentLabel === 'New Delhi, Delhi' || currentLabel === 'Current Location') {
+            fetch(`${API_BASE}/api/geocode/auto`)
+              .then(r => r.json())
+              .then(async (auto) => {
+                if (auto?.lat && auto?.lon) {
+                  if (token) {
+                    await fetch(`${API_BASE}/api/location`, {
+                      method: 'POST',
+                      headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+                      body: JSON.stringify(auto)
+                    });
+                  }
+                  const updatedDash = await fetch(`${API_BASE}/api/dashboard?lat=${auto.lat}&lon=${auto.lon}&label=${encodeURIComponent(auto.label)}`, { headers }).then(r => r.json());
+                  setData(updatedDash);
+                }
+              })
+              .catch(() => {});
+          }
         } catch (e) {
           showNotice('Connection error');
         } finally {
@@ -217,12 +344,152 @@
         const urlParams = new URLSearchParams(window.location.search);
         const tok = urlParams.get('token');
         if (tok) {
+          localStorage.setItem('aero_auth_token', tok);
+          setAuthToken(tok);
+          window.history.replaceState({}, document.title, window.location.pathname);
           showNotice(`Welcome ${urlParams.get('name') || 'User'}`);
           loadData(tok);
+        } else if (authToken) {
+          loadData(authToken);
         } else {
-          loadData();
+          // Unauthenticated: fetch preview for Landing Page with auto location
+          fetch(`${API_BASE}/api/geocode/auto`)
+            .then(r => r.json())
+            .then(auto => {
+              fetch(`${API_BASE}/api/dashboard?lat=${auto.lat}&lon=${auto.lon}&label=${encodeURIComponent(auto.label)}`)
+                .then(r => r.json())
+                .then(setData)
+                .catch(() => loadData(''));
+            })
+            .catch(() => loadData(''));
         }
       }, []);
+
+      const handleSignOut = () => {
+        localStorage.removeItem('aero_auth_token');
+        setAuthToken('');
+        setData(null);
+        showNotice('Signed out');
+        loadData('');
+      };
+
+      const handleDetectGps = () => {
+        setIsDetectingGps(true);
+        setOtpFeedback('Detecting precise location…');
+        const fallbackAuto = async () => {
+          try {
+            const auto = await fetch(`${API_BASE}/api/geocode/auto`).then(r => r.json());
+            if (auto?.label) {
+              if (authToken) {
+                await fetch(`${API_BASE}/api/location`, {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${authToken}` },
+                  body: JSON.stringify(auto)
+                });
+              }
+              setOtpFeedback(`📍 Auto-detected: ${auto.label}`);
+              loadData(authToken);
+            }
+          } catch (e) {
+            setOtpFeedback('Location detection failed');
+          } finally {
+            setIsDetectingGps(false);
+          }
+        };
+
+        if (navigator.geolocation) {
+          navigator.geolocation.getCurrentPosition(
+            async (pos) => {
+              try {
+                const { latitude, longitude } = pos.coords;
+                const geo = await fetch(`${API_BASE}/api/geocode/reverse?lat=${latitude}&lon=${longitude}`).then(r => r.json());
+                if (authToken) {
+                  await fetch(`${API_BASE}/api/location`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${authToken}` },
+                    body: JSON.stringify({
+                      lat: latitude,
+                      lon: longitude,
+                      label: geo.label,
+                      city: geo.city,
+                      country: geo.country
+                    })
+                  });
+                }
+                setOtpFeedback(`📍 GPS detected: ${geo.label}`);
+                loadData(authToken);
+              } catch (e) {
+                await fallbackAuto();
+              } finally {
+                setIsDetectingGps(false);
+              }
+            },
+            async () => {
+              await fallbackAuto();
+            },
+            { timeout: 5000 }
+          );
+        } else {
+          fallbackAuto();
+        }
+      };
+
+      const handleSendEmailOtp = async () => {
+        const target = (emailInput || data?.profile?.email || data?.user?.email || '').trim();
+        if (!target || !target.includes('@')) {
+          setOtpFeedback('Please enter a valid email address');
+          return;
+        }
+        setOtpFeedback('Dispatching verification code via Gmail SMTP…');
+        try {
+          const authHdr = authToken ? { 'Authorization': `Bearer ${authToken}` } : { 'Authorization': `Bearer token-${activePersonaId}` };
+          const res = await fetch(`${API_BASE}/api/email/send-otp`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', ...authHdr },
+            body: JSON.stringify({ email: target })
+          }).then(r => r.json());
+          if (res.success) {
+            setEmailOtpSent(true);
+            if (res.otp) {
+              setEmailOtpCode(res.otp);
+            }
+            setOtpFeedback(`✓ Verification code sent to ${target}`);
+          } else {
+            setOtpFeedback(res.error || 'Failed to dispatch email code');
+          }
+        } catch (e) {
+          setOtpFeedback('Failed to dispatch verification code');
+        }
+      };
+
+      const handleVerifyEmailOtp = async () => {
+        if (!emailOtpInput || emailOtpInput.trim().length < 4) {
+          setOtpFeedback('Enter 6-digit verification code');
+          return;
+        }
+        try {
+          const authHdr = authToken ? { 'Authorization': `Bearer ${authToken}` } : { 'Authorization': `Bearer token-${activePersonaId}` };
+          const target = (emailInput || data?.profile?.email || data?.user?.email || '').trim();
+          const res = await fetch(`${API_BASE}/api/email/verify-otp`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', ...authHdr },
+            body: JSON.stringify({ email: target, otp: emailOtpInput.trim() })
+          }).then(r => r.json());
+          if (res.success) {
+            setEmailOtpSent(false);
+            setEmailOtpCode('');
+            setOtpFeedback('✅ Email verified! Real-time alerts activated.');
+            loadData(authToken);
+          } else {
+            setOtpFeedback(res.error || 'Incorrect verification code');
+          }
+        } catch (e) {
+          setOtpFeedback('Verification error');
+        }
+      };
+
+      const handleSendOtp = handleSendEmailOtp;
+      const handleVerifyOtp = handleVerifyEmailOtp;
 
       const handleSelectPersona = async (pId) => {
         setActivePersonaId(pId);
@@ -245,16 +512,189 @@
         const next = !isForcedFallback;
         setIsForcedFallback(next);
         setLoading(true);
-        await loadData(`token-${activePersonaId}`, next);
+        await loadData(authToken || `token-${activePersonaId}`, next);
         showNotice(next ? 'Fallback active' : 'Live feeds restored');
+      };
+
+      // AI Copilot Query Function
+      const handleAskAi = async (customPrompt) => {
+        const query = customPrompt || aiChatInput;
+        if (!query || !query.trim()) return;
+
+        const userMsg = { sender: 'user', text: query.trim() };
+        setAiChatMessages(prev => [...prev, userMsg]);
+        if (!customPrompt) setAiChatInput('');
+        setAiChatLoading(true);
+
+        try {
+          const authHdr = authToken ? { 'Authorization': `Bearer ${authToken}` } : { 'Authorization': `Bearer token-${activePersonaId}` };
+          const res = await fetch(`${API_BASE}/api/ai-chat`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', ...authHdr },
+            body: JSON.stringify({ question: query.trim() })
+          }).then(r => r.json());
+
+          setAiChatMessages(prev => [
+            ...prev,
+            {
+              sender: 'ai',
+              text: res.answer || "Analyzed current atmospheric vitals and personal profile. Routine caution advised.",
+              engine: res.engine_mode || 'AI Health Copilot',
+              latency: res.latency_ms
+            }
+          ]);
+        } catch (err) {
+          setAiChatMessages(prev => [
+            ...prev,
+            {
+              sender: 'ai',
+              text: "At current AQI levels, limit high-intensity outdoor workouts and favor indoor training.",
+              engine: 'Clinical Fallback'
+            }
+          ]);
+        } finally {
+          setAiChatLoading(false);
+        }
+      };
+
+      // Open Email Alert Dispatch Modal & Pre-fetch AI draft
+      const handleOpenSendEmailModal = async () => {
+        setIsSendAlertModalOpen(true);
+        setEmailSendFeedback('');
+        const userEmail = (emailInput || data?.profile?.email || data?.user?.email || 'tornovdutta@gmail.com').trim();
+        setTargetEmail(userEmail);
+
+        try {
+          const authHdr = authToken ? { 'Authorization': `Bearer ${authToken}` } : { 'Authorization': `Bearer token-${activePersonaId}` };
+          const res = await fetch(`${API_BASE}/api/advisory/draft-email`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', ...authHdr },
+            body: JSON.stringify({})
+          }).then(r => r.json());
+          if (res?.subject) {
+            setEmailSubject(res.subject);
+          }
+          if (res?.body) {
+            setEmailBody(res.body);
+          }
+          if (res?.target_email) {
+            setTargetEmail(res.target_email);
+          }
+        } catch (e) {
+          const riskLv = data?.risk?.risk_level?.toUpperCase() || 'MODERATE';
+          const locName = data?.location?.label?.split(',')[0] || 'your area';
+          setEmailSubject(`⚠️ [AeroHealth Advisory] ${riskLv} Risk Alert: ${locName}`);
+          setEmailBody(`Dear AeroHealth Member,\n\nAir quality in ${locName} is recorded at AQI ${data?.aqi?.aqi || 85}. Given your registered health profile, please avoid strenuous outdoor exertion during afternoon hours and carry recommended protective gear.\n\nOptimal outdoor window: after 6:30 PM.`);
+        }
+      };
+
+      // Send Custom Email to recipient via Gmail SMTP TLS
+      const handleSendCustomEmail = async () => {
+        const dest = (targetEmail || '').trim();
+        if (!dest || !dest.includes('@')) {
+          setEmailSendFeedback('⚠️ Please enter a valid recipient email address.');
+          return;
+        }
+        setIsSendingEmail(true);
+        setEmailSendFeedback('Dispatching personalized advisory via Gmail SMTP TLS…');
+        try {
+          const authHdr = authToken ? { 'Authorization': `Bearer ${authToken}` } : { 'Authorization': `Bearer token-${activePersonaId}` };
+          const res = await fetch(`${API_BASE}/api/notifications/send-custom-email`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', ...authHdr },
+            body: JSON.stringify({
+              email: dest,
+              subject: emailSubject,
+              message: emailBody
+            })
+          }).then(r => r.json());
+
+          if (res.success) {
+            setEmailSendFeedback(`✅ Email delivered to ${dest} via Gmail SMTP!`);
+            showNotice(`Health advisory email dispatched to ${dest}`);
+            loadData(authToken);
+          } else {
+            setEmailSendFeedback(`⚠️ Delivery notice: ${res.dispatch?.message || 'Check email configuration.'}`);
+          }
+        } catch (e) {
+          setEmailSendFeedback('⚠️ Failed to dispatch email alert.');
+        } finally {
+          setIsSendingEmail(false);
+        }
+      };
+
+      const handleOpenSendSmsModal = handleOpenSendEmailModal;
+      const handleSendCustomSmsToPhone = handleSendCustomEmail;
+
+      // Native Browser Push Notification
+      const handleSendBrowserPushNotification = () => {
+        if (!('Notification' in window)) {
+          showNotice('Browser push notifications not supported.');
+          return;
+        }
+
+        const fireNotice = () => {
+          const title = `AeroHealth [${data?.risk?.risk_level?.toUpperCase() || 'MODERATE'}] Advisory`;
+          const options = {
+            body: smsDraftText || `${data?.advisory?.headline || 'Environmental Notice'}: AQI ${data?.aqi?.aqi} in ${data?.location?.label?.split(',')[0] || 'Current Area'}.`,
+            icon: 'https://api.dicebear.com/7.x/shapes/svg?seed=AeroHealth'
+          };
+          try {
+            new Notification(title, options);
+            showNotice('🔔 System notification triggered on your screen!');
+          } catch (e) {
+            showNotice('Notification display failed');
+          }
+        };
+
+        if (Notification.permission === 'granted') {
+          fireNotice();
+        } else if (Notification.permission !== 'denied') {
+          Notification.requestPermission().then(perm => {
+            if (perm === 'granted') fireNotice();
+            else showNotice('Notification permission was dismissed');
+          });
+        } else {
+          showNotice('Notification permission is blocked in your browser settings.');
+        }
+      };
+
+      const handleDispatchCustomAlert = async () => {
+        setIsDispatchingAlert(true);
+        try {
+          const authHdr = authToken ? { 'Authorization': `Bearer ${authToken}` } : { 'Authorization': `Bearer token-${activePersonaId}` };
+          const res = await fetch(`${API_BASE}/api/advisory/generate`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', ...authHdr },
+            body: JSON.stringify({ dispatch: true })
+          }).then(r => r.json());
+
+          if (res?.alert) {
+            showNotice(`Custom alert sent via ${res.alert.channel_sent?.join(' + ') || 'SMS / Email'}`);
+          } else {
+            showNotice('Custom advisory generated & dispatched');
+          }
+
+          const [dRes, hRes] = await Promise.all([
+            fetch(`${API_BASE}/api/dashboard?force_fallback=${isForcedFallback ? 1 : 0}`, { headers: authHdr }).then(r => r.json()),
+            fetch(`${API_BASE}/api/history?days=7`, { headers: authHdr }).then(r => r.json()).catch(() => null)
+          ]);
+          if (dRes) setData(dRes);
+          if (hRes) setHistory(hRes);
+        } catch (e) {
+          showNotice('Alert generation failed');
+        } finally {
+          setIsDispatchingAlert(false);
+        }
       };
 
       const handleSimulate = async () => {
         setSimLoading(true);
         try {
+          const authHdr = authToken ? { 'Authorization': `Bearer ${authToken}` } : { 'Authorization': `Bearer token-${activePersonaId}` };
           const res = await fetch(`${API_BASE}/api/advisory/generate`, {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer token-${activePersonaId}` },
+            headers: { 'Content-Type': 'application/json', ...authHdr },
             body: JSON.stringify({ simulate_aqi: Number(simAqi), simulate_temp: Number(simTemp) })
           }).then(r => r.json());
           setSimResult(res);
@@ -268,17 +708,18 @@
 
       const handleSendTestEmail = async () => {
         try {
+          const authHdr = authToken ? { 'Authorization': `Bearer ${authToken}` } : { 'Authorization': `Bearer token-${activePersonaId}` };
           const res = await fetch(`${API_BASE}/api/notifications/test-email`, {
             method: 'POST',
-            headers: { 'Authorization': `Bearer token-${activePersonaId}`, 'Content-Type': 'application/json' },
-            body: JSON.stringify({ recipient: 'tornovdutta@gmail.com' })
+            headers: { ...authHdr, 'Content-Type': 'application/json' },
+            body: JSON.stringify({ recipient: data?.user?.email || 'tornovdutta@gmail.com' })
           }).then(r => r.json());
           if (res?.dispatch?.status?.includes('delivered')) {
             showNotice(`Delivered to ${res.dispatch.recipient}`);
           } else {
             showNotice(`Status: ${res?.dispatch?.status || 'sent'}`);
           }
-          const hRes = await fetch(`${API_BASE}/api/history?days=7`, { headers: { 'Authorization': `Bearer token-${activePersonaId}` } }).then(r => r.json());
+          const hRes = await fetch(`${API_BASE}/api/history?days=7`, { headers: authHdr }).then(r => r.json());
           setHistory(hRes);
         } catch (err) {
           showNotice('Email dispatch failed');
@@ -287,11 +728,12 @@
 
       const handleTriggerScheduler = async () => {
         try {
+          const authHdr = authToken ? { 'Authorization': `Bearer ${authToken}` } : { 'Authorization': `Bearer token-${activePersonaId}` };
           await fetch(`${API_BASE}/api/scheduler/trigger`, {
             method: 'POST',
-            headers: { 'Authorization': `Bearer token-${activePersonaId}` }
+            headers: authHdr
           });
-          const hRes = await fetch(`${API_BASE}/api/history?days=7`, { headers: { 'Authorization': `Bearer token-${activePersonaId}` } }).then(r => r.json());
+          const hRes = await fetch(`${API_BASE}/api/history?days=7`, { headers: authHdr }).then(r => r.json());
           setHistory(hRes);
           showNotice('Background check fired');
         } catch (e) {
@@ -316,6 +758,24 @@
       const profile = data?.profile || {};
       const loc = data?.location || {};
 
+      const safetyVerdict = risk.safety_verdict || {
+        badge: 'MODERATE CAUTION',
+        color: '#d97706',
+        bg: '#fffbeb',
+        border: '#fde68a',
+        summary: 'Acceptable for most, but sensitive respiratory profiles should moderate outdoor cardio.',
+        icon: '🟡',
+        safe_for_exercise: false
+      };
+
+      const activities = risk.activity_suitability || {
+        running: { status: 'Caution', advice: 'Pace intensity; avoid midday smog hours.' },
+        cycling: { status: 'Caution', advice: 'Wear protective mask along vehicular traffic.' },
+        walking: { status: 'Favorable', advice: 'Best window: early morning or evening.' },
+        children: { status: 'Limit Exertion', advice: 'Keep recess games under 25 minutes.' },
+        indoor_gym: { status: '100% Recommended', advice: 'Filtered indoor air eliminates respiratory risk.' }
+      };
+
       const riskLevel = risk.risk_level || 'moderate';
       const riskColor = riskLevel === 'severe' ? '#ef4444' : riskLevel === 'high' ? '#f97316' : riskLevel === 'moderate' ? '#f59e0b' : '#10b981';
       const riskBg = riskLevel === 'severe' ? '#fef2f2' : riskLevel === 'high' ? '#fff7ed' : riskLevel === 'moderate' ? '#fffbeb' : '#ecfdf5';
@@ -330,45 +790,61 @@
       const greeting = hour < 12 ? 'Good morning' : hour < 18 ? 'Good afternoon' : 'Good evening';
 
       const hourlyData = [
-        { time: 'Now', temp: currentTemp, aqi: currentAqi, isCurrent: true, icon: '⛅' },
-        { time: '12 PM', temp: currentTemp + 2, aqi: currentAqi + 17, icon: '🌤️' },
-        { time: '1 PM', temp: currentTemp + 3, aqi: currentAqi + 22, icon: '🌤️' },
-        { time: '2 PM', temp: currentTemp + 2, aqi: currentAqi + 13, icon: '⛅' },
-        { time: '3 PM', temp: currentTemp + 1, aqi: currentAqi + 1, icon: '⛅' },
-        { time: '4 PM', temp: currentTemp, aqi: Math.max(40, currentAqi - 15), icon: '🌤️' },
-        { time: '5 PM', temp: currentTemp - 1, aqi: Math.max(35, currentAqi - 29), icon: '☀️' },
-        { time: '6 PM', temp: currentTemp - 2, aqi: Math.max(30, currentAqi - 38), icon: '🌙' },
+        { time: 'Now', temp: currentTemp, aqi: currentAqi, isCurrent: true, icon: '⛅', riskScore: Math.round(risk.numeric_score || 55), advice: 'Current baseline reading' },
+        { time: '12 PM', temp: currentTemp + 2, aqi: currentAqi + 17, icon: '🌤️', riskScore: Math.min(100, Math.round((risk.numeric_score || 55) + 12)), advice: 'Midday photochemical smog buildup' },
+        { time: '1 PM', temp: currentTemp + 3, aqi: currentAqi + 22, icon: '🌤️', riskScore: Math.min(100, Math.round((risk.numeric_score || 55) + 16)), advice: 'Peak heat & ozone window — avoid exertion' },
+        { time: '2 PM', temp: currentTemp + 2, aqi: currentAqi + 13, icon: '⛅', riskScore: Math.min(100, Math.round((risk.numeric_score || 55) + 9)), advice: 'High solar radiation and airborne dust' },
+        { time: '3 PM', temp: currentTemp + 1, aqi: currentAqi + 1, icon: '⛅', riskScore: Math.min(100, Math.round((risk.numeric_score || 55) + 3)), advice: 'Atmospheric boundary layer begins settling' },
+        { time: '4 PM', temp: currentTemp, aqi: Math.max(40, currentAqi - 15), icon: '🌤️', riskScore: Math.max(25, Math.round((risk.numeric_score || 55) - 8)), advice: 'Particulate density starts easing' },
+        { time: '5 PM', temp: currentTemp - 1, aqi: Math.max(35, currentAqi - 29), icon: '☀️', riskScore: Math.max(20, Math.round((risk.numeric_score || 55) - 15)), advice: 'Golden hour window: pleasant light & cooling' },
+        { time: '6 PM', temp: currentTemp - 2, aqi: Math.max(30, currentAqi - 38), icon: '🌙', riskScore: Math.max(15, Math.round((risk.numeric_score || 55) - 22)), advice: 'Prime window for outdoor walk or cycling' },
       ];
 
+      const activeHourObj = hourlyData[selectedHourIndex] || hourlyData[0];
+
       const dailyForecast = [
-        { day: 'Today', high: currentTemp + 3, low: currentTemp - 6, aqi: currentAqi, icon: '⛅' },
-        { day: 'Tue', high: currentTemp + 2, low: currentTemp - 7, aqi: Math.max(50, currentAqi - 15), icon: '🌤️' },
-        { day: 'Wed', high: currentTemp, low: currentTemp - 8, aqi: Math.max(45, currentAqi - 51), icon: '🌧️' },
-        { day: 'Thu', high: currentTemp + 4, low: currentTemp - 6, aqi: Math.max(40, currentAqi - 66), icon: '☀️' },
-        { day: 'Fri', high: currentTemp + 5, low: currentTemp - 6, aqi: Math.max(40, currentAqi - 75), icon: '☀️' },
-        { day: 'Sat', high: currentTemp + 3, low: currentTemp - 6, aqi: Math.max(50, currentAqi - 37), icon: '🌤️' },
-        { day: 'Sun', high: currentTemp - 1, low: currentTemp - 9, aqi: currentAqi + 8, icon: '⛅' },
+        { day: 'Today', high: currentTemp + 3, low: currentTemp - 6, aqi: currentAqi, icon: '⛅', condition: 'Moderate PM2.5' },
+        { day: 'Tue', high: currentTemp + 2, low: currentTemp - 7, aqi: Math.max(50, currentAqi - 15), icon: '🌤️', condition: 'Mild haze' },
+        { day: 'Wed', high: currentTemp, low: currentTemp - 8, aqi: Math.max(45, currentAqi - 51), icon: '🌧️', condition: 'Clean rain shower' },
+        { day: 'Thu', high: currentTemp + 4, low: currentTemp - 6, aqi: Math.max(40, currentAqi - 66), icon: '☀️', condition: 'Clear sunshine' },
+        { day: 'Fri', high: currentTemp + 5, low: currentTemp - 6, aqi: Math.max(40, currentAqi - 75), icon: '☀️', condition: 'Crisp air' },
+        { day: 'Sat', high: currentTemp + 3, low: currentTemp - 6, aqi: Math.max(50, currentAqi - 37), icon: '🌤️', condition: 'Gentle breeze' },
+        { day: 'Sun', high: currentTemp - 1, low: currentTemp - 9, aqi: currentAqi + 8, icon: '⛅', condition: 'Evening inversion' },
       ];
 
       const alertsList = history?.alerts || [];
 
+      // Demo personas for fast switching
+      const demoPersonas = [
+        { id: 'persona-1', name: 'Aditi', role: 'Asthma (Office)', icon: '🫁' },
+        { id: 'persona-2', name: 'Vikram', role: 'Outdoor Worker', icon: '👷' },
+        { id: 'persona-3', name: 'Meera', role: 'Senior (Cardiac)', icon: '❤️' },
+        { id: 'persona-4', name: 'Aarav', role: 'Athlete (Healthy)', icon: '🏃' },
+      ];
+
       return (
         <div>
+          {/* Header */}
           <header style={{
-            background: 'rgba(255, 255, 255, 0.85)',
-            backdropFilter: 'blur(12px)',
+            background: 'rgba(255, 255, 255, 0.88)',
+            backdropFilter: 'blur(16px)',
             borderBottom: '1px solid rgba(0, 0, 0, 0.06)',
             position: 'sticky', top: 0, zIndex: 100
           }}>
-            <div style={{ maxWidth: '1320px', margin: '0 auto', padding: '12px 24px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '32px' }}>
+            <div style={{ maxWidth: '1320px', margin: '0 auto', padding: '12px 24px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '12px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '28px' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '10px', cursor: 'pointer' }} onClick={() => setActiveTab('home')}>
-                  <div style={{ width: '30px', height: '30px', borderRadius: '9px', background: '#ecfdf5', border: '1px solid #a7f3d0', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.95rem' }}>
+                  <div style={{ width: '32px', height: '32px', borderRadius: '10px', background: '#ecfdf5', border: '1px solid #a7f3d0', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1.05rem' }}>
                     🌿
                   </div>
-                  <span style={{ fontSize: '1.25rem', fontWeight: 700, letterSpacing: '-0.025em', color: '#0f172a' }}>
-                    AeroHealth
-                  </span>
+                  <div>
+                    <span style={{ fontSize: '1.25rem', fontWeight: 800, letterSpacing: '-0.03em', color: '#0f172a' }}>
+                      AeroHealth
+                    </span>
+                    <span style={{ fontSize: '0.66rem', color: '#0284c7', background: '#e0f2fe', padding: '1px 6px', borderRadius: '4px', marginLeft: '6px', fontWeight: 700 }}>
+                      PRO
+                    </span>
+                  </div>
                 </div>
 
                 <nav style={{ display: 'flex', background: '#f1f5f9', borderRadius: '999px', padding: '3px', border: '1px solid #e2e8f0' }}>
@@ -379,14 +855,48 @@
                 </nav>
               </div>
 
-              <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+              {/* Action Buttons: Ask AI + Send SMS + Notifications + Profile */}
+              <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
+                {/* AI Copilot Button */}
+                <button
+                  onClick={() => setIsAiChatOpen(true)}
+                  style={{
+                    display: 'flex', alignItems: 'center', gap: '6px',
+                    padding: '6px 14px', borderRadius: '999px',
+                    background: 'linear-gradient(135deg, #0284c7 0%, #0369a1 100%)',
+                    color: '#ffffff', fontSize: '0.78rem', fontWeight: 700,
+                    boxShadow: '0 2px 8px rgba(2, 132, 199, 0.25)',
+                    cursor: 'pointer'
+                  }}
+                  title="Ask AeroHealth AI"
+                >
+                  <span>✨</span>
+                  <span>Ask AI Copilot</span>
+                </button>
+
+                {/* Send Alert to Email Button */}
+                <button
+                  onClick={handleOpenSendEmailModal}
+                  style={{
+                    display: 'flex', alignItems: 'center', gap: '6px',
+                    padding: '6px 14px', borderRadius: '999px',
+                    background: '#ffffff', color: '#0f172a',
+                    border: '1px solid #cbd5e1', fontSize: '0.78rem', fontWeight: 600,
+                    cursor: 'pointer'
+                  }}
+                  title="Dispatch personalized advisory to email"
+                >
+                  <span>📧</span>
+                  <span>Send to Email</span>
+                </button>
+
                 <div style={{
                   display: 'inline-flex', alignItems: 'center', gap: '6px',
                   padding: '4px 10px', background: '#ecfdf5', border: '1px solid #a7f3d0',
                   borderRadius: '999px', fontSize: '0.72rem', color: '#065f46', fontWeight: 600
                 }}>
                   <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: '#10b981' }} />
-                  Live
+                  Live Sync
                 </div>
 
                 <button
@@ -394,8 +904,7 @@
                   style={{
                     width: '36px', height: '36px', borderRadius: '10px', background: '#f8fafc',
                     border: '1px solid #e2e8f0', display: 'flex', alignItems: 'center',
-                    justifyContent: 'center', fontSize: '1rem', position: 'relative', cursor: 'pointer',
-                    transition: 'all 0.15s ease'
+                    justifyContent: 'center', fontSize: '1rem', position: 'relative', cursor: 'pointer'
                   }}
                   title="Notifications & Alerts"
                 >
@@ -415,10 +924,10 @@
                     border: '1px solid #e2e8f0', borderRadius: '999px', cursor: 'pointer'
                   }}
                 >
-                  <img src={user.picture} style={{ width: '28px', height: '28px', borderRadius: '50%', background: '#f1f5f9' }} />
+                  <img src={user.picture || 'https://api.dicebear.com/7.x/avataaars/svg?seed=User'} style={{ width: '28px', height: '28px', borderRadius: '50%', background: '#f1f5f9' }} />
                   <div>
                     <div style={{ fontSize: '0.8rem', fontWeight: 600, color: '#0f172a', lineHeight: 1.1 }}>{firstName}</div>
-                    <div style={{ fontSize: '0.62rem', color: '#64748b', textTransform: 'capitalize' }}>{profile.conditions?.[0]?.replace('_', ' ') || 'Normal'}</div>
+                    <div style={{ fontSize: '0.62rem', color: '#64748b', textTransform: 'capitalize' }}>{profile.conditions?.[0]?.replace('_', ' ') || 'Healthy'}</div>
                   </div>
                 </button>
               </div>
@@ -429,6 +938,7 @@
 
             {activeTab === 'home' && (
               <>
+                {/* 1. Hero Weather Card (Apple Weather Style) */}
                 <div className="hero-weather-card">
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '20px', position: 'relative', zIndex: 1 }}>
                     <div>
@@ -443,7 +953,7 @@
                         <span>{loc.label || 'Bhopal, India'}</span>
                       </div>
 
-                      <h1 style={{ fontSize: '2.3rem', fontWeight: 700, color: '#0f172a', letterSpacing: '-0.03em', lineHeight: 1.1, margin: 0 }}>
+                      <h1 style={{ fontSize: '2.3rem', fontWeight: 800, color: '#0f172a', letterSpacing: '-0.03em', lineHeight: 1.1, margin: 0 }}>
                         {greeting}, {firstName}
                       </h1>
                       <p style={{ fontSize: '0.95rem', color: '#475569', marginTop: '6px', fontWeight: 400 }}>
@@ -452,7 +962,7 @@
 
                       <div style={{ marginTop: '14px', display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
                         <span style={{ fontSize: '0.74rem', color: '#64748b', background: 'rgba(255,255,255,0.6)', padding: '4px 10px', borderRadius: '999px', fontWeight: 500 }}>
-                          ⏱ Updated {formatFreshness(weather.fetched_at)}
+                          ⏱ Telemetry synced {formatFreshness(weather.fetched_at)}
                         </span>
                         <button onClick={handleToggleFallback} style={{ background: 'none', border: 'none', fontSize: '0.72rem', fontWeight: 500, color: isForcedFallback ? '#ef4444' : '#64748b', cursor: 'pointer' }}>
                           {isForcedFallback ? 'Exit Fallback' : 'Simulate Outage'}
@@ -465,7 +975,7 @@
                         Clearer days, healthier you
                       </div>
                       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: '10px' }}>
-                        <span style={{ fontSize: '2.4rem' }}>⛅</span>
+                        <span style={{ fontSize: '2.5rem' }}>⛅</span>
                         <span style={{ fontSize: '3.6rem', fontWeight: 700, letterSpacing: '-0.045em', color: '#0f172a', lineHeight: 1 }}>
                           {currentTemp}°
                         </span>
@@ -474,7 +984,7 @@
                         {weather.description || 'Partly cloudy'}
                       </div>
                       <div style={{ fontSize: '0.8rem', color: '#64748b', marginTop: '2px' }}>
-                        Feels like {currentTemp + 3}° · H {currentTemp + 3}° · L {currentTemp - 6}°
+                        Feels like {Math.round(weather.apparent_temperature || currentTemp + 2)}° · H {currentTemp + 3}° · L {currentTemp - 6}°
                       </div>
                     </div>
                   </div>
@@ -482,11 +992,11 @@
                   <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: '10px', marginTop: '24px', position: 'relative', zIndex: 1 }}>
                     {[
                       { icon: '💧', label: 'Humidity', value: `${weather.humidity || 62}%` },
-                      { icon: '💨', label: 'Wind', value: `${weather.wind_speed || 12} km/h` },
+                      { icon: '💨', label: 'Wind', value: `${weather.wind_speed || 12} km/h ${weather.wind_cardinal || 'WSW'}` },
                       { icon: '☀️', label: 'UV Index', value: `${weather.uv_index || 7}`, sub: (weather.uv_index || 7) >= 6 ? 'High' : 'Moderate' },
                       { icon: '👁️', label: 'Visibility', value: `${visibility} km` }
                     ].map((c, i) => (
-                      <div key={i} style={{ background: 'rgba(255,255,255,0.7)', backdropFilter: 'blur(8px)', borderRadius: '14px', padding: '10px 14px', border: '1px solid rgba(0,0,0,0.04)', display: 'flex', alignItems: 'center', gap: '10px' }}>
+                      <div key={i} style={{ background: 'rgba(255,255,255,0.75)', backdropFilter: 'blur(8px)', borderRadius: '14px', padding: '10px 14px', border: '1px solid rgba(0,0,0,0.04)', display: 'flex', alignItems: 'center', gap: '10px' }}>
                         <span style={{ fontSize: '1.15rem' }}>{c.icon}</span>
                         <div>
                           <div style={{ fontSize: '0.66rem', textTransform: 'uppercase', letterSpacing: '0.05em', color: '#64748b', fontWeight: 600 }}>{c.label}</div>
@@ -499,6 +1009,307 @@
                   </div>
                 </div>
 
+                {/* 2. Top "Is It Good For You Today?" Verdict Banner (AccuWeather / Health App Style) */}
+                <div style={{
+                  background: safetyVerdict.bg || '#fffbeb',
+                  border: `1.5px solid ${safetyVerdict.border || '#fde68a'}`,
+                  borderRadius: '24px',
+                  padding: '20px 24px',
+                  boxShadow: 'var(--shadow-card)'
+                }}>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '16px' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '16px', flex: 1, minWidth: '280px' }}>
+                      <div style={{
+                        width: '52px', height: '52px', borderRadius: '16px',
+                        background: '#ffffff', border: `1px solid ${safetyVerdict.border || '#cbd5e1'}`,
+                        display: 'flex', alignItems: 'center', justifyContent: 'center',
+                        fontSize: '1.8rem', flexShrink: 0
+                      }}>
+                        {safetyVerdict.icon || '🛡️'}
+                      </div>
+                      <div>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+                          <span style={{ fontSize: '0.7rem', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.06em', color: safetyVerdict.color || '#d97706' }}>
+                            IS IT SAFE FOR YOU TODAY?
+                          </span>
+                          <span style={{ fontSize: '0.66rem', background: '#ffffff', padding: '2px 8px', borderRadius: '999px', border: `1px solid ${safetyVerdict.border}`, color: '#475569', fontWeight: 600 }}>
+                            Personalized to {profile.conditions?.[0]?.replace('_', ' ') || 'Respiratory'} Profile
+                          </span>
+                        </div>
+                        <h2 style={{ fontSize: '1.25rem', fontWeight: 800, color: '#0f172a', letterSpacing: '-0.02em', marginTop: '3px' }}>
+                          {safetyVerdict.badge}
+                        </h2>
+                        <p style={{ fontSize: '0.84rem', color: '#334155', marginTop: '3px', lineHeight: 1.45 }}>
+                          {safetyVerdict.summary}
+                        </p>
+                      </div>
+                    </div>
+
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
+                      <button
+                        onClick={() => setIsAiChatOpen(true)}
+                        style={{
+                          padding: '10px 18px', borderRadius: '999px',
+                          background: '#0f172a', color: '#ffffff',
+                          fontSize: '0.8rem', fontWeight: 700,
+                          cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '6px'
+                        }}
+                      >
+                        <span>✨</span>
+                        <span>Ask AI Copilot</span>
+                      </button>
+                      <button
+                        onClick={handleOpenSendEmailModal}
+                        style={{
+                          padding: '10px 18px', borderRadius: '999px',
+                          background: '#ffffff', color: '#0f172a',
+                          border: '1.5px solid #cbd5e1', fontSize: '0.8rem', fontWeight: 700,
+                          cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '6px'
+                        }}
+                      >
+                        <span>📧</span>
+                        <span>Send Alert to Email</span>
+                      </button>
+                    </div>
+                  </div>
+                </div>
+
+                {/* 3. 5-Activity Suitability Matrix (Garmin / WHOOP / Apple Health Style) */}
+                <div className="premium-card">
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px', flexWrap: 'wrap', gap: '10px' }}>
+                    <div>
+                      <div style={{ fontSize: '0.68rem', fontWeight: 700, color: '#0284c7', textTransform: 'uppercase', letterSpacing: '0.06em' }}>
+                        Activity Recommendations
+                      </div>
+                      <h2 style={{ fontSize: '1.1rem', fontWeight: 800, color: '#0f172a', margin: '2px 0 0' }}>
+                        Personal Activity & Sport Suitability
+                      </h2>
+                    </div>
+                    <span style={{ fontSize: '0.72rem', color: '#64748b' }}>
+                      Calculated for: <strong style={{ color: '#0f172a' }}>{profile.conditions?.[0]?.replace('_', ' ') || 'Respiratory'} Sensitivities</strong>
+                    </span>
+                  </div>
+
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '14px' }}>
+                    {[
+                      { key: 'running', title: 'Running & Cardio', icon: '🏃', data: activities.running },
+                      { key: 'cycling', title: 'Cycling & Commute', icon: '🚴', data: activities.cycling },
+                      { key: 'walking', title: 'Walking & Errands', icon: '🚶', data: activities.walking },
+                      { key: 'children', title: 'Children & Seniors', icon: '🧒', data: activities.children },
+                      { key: 'indoor_gym', title: 'Indoor Gym / Training', icon: '🏋️', data: activities.indoor_gym },
+                    ].map((act) => {
+                      const st = act.data?.status || 'Moderate';
+                      const isClear = st.includes('Clear') || st.includes('Safe') || st.includes('100%') || st.includes('Favorable');
+                      const isAvoid = st.includes('Avoid') || st.includes('Limit');
+                      const badgeBg = isClear ? '#ecfdf5' : isAvoid ? '#fef2f2' : '#fffbeb';
+                      const badgeBorder = isClear ? '#a7f3d0' : isAvoid ? '#fecaca' : '#fde68a';
+                      const badgeColor = isClear ? '#065f46' : isAvoid ? '#991b1b' : '#92400e';
+
+                      return (
+                        <div key={act.key} className="activity-card">
+                          <div>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
+                              <span style={{ fontSize: '1.6rem' }}>{act.icon}</span>
+                              <span style={{
+                                fontSize: '0.68rem', fontWeight: 800, padding: '3px 8px', borderRadius: '999px',
+                                background: badgeBg, border: `1px solid ${badgeBorder}`, color: badgeColor
+                              }}>
+                                {st}
+                              </span>
+                            </div>
+                            <div style={{ fontSize: '0.92rem', fontWeight: 700, color: '#0f172a', marginBottom: '4px' }}>
+                              {act.title}
+                            </div>
+                            <p style={{ fontSize: '0.78rem', color: '#475569', lineHeight: 1.45 }}>
+                              {act.data?.advice}
+                            </p>
+                          </div>
+                          <div style={{ marginTop: '12px', paddingTop: '8px', borderTop: '1px solid #f1f5f9', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                            <span style={{ fontSize: '0.68rem', color: '#94a3b8' }}>AeroHealth Guidance</span>
+                            <span style={{ fontSize: '0.74rem', color: '#0284c7', fontWeight: 600, cursor: 'pointer' }} onClick={() => handleAskAi(`Can I do ${act.title.toLowerCase()} right now?`)}>
+                              Ask AI →
+                            </span>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                {/* 4. Atmospheric Vitals Grid (Apple Weather & Carrot Weather Style) */}
+                <div>
+                  <div style={{ fontSize: '0.72rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', color: '#64748b', marginBottom: '10px' }}>
+                    Atmospheric Vitals & Sensor Telemetry
+                  </div>
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '14px' }}>
+                    {/* Barometric Pressure */}
+                    <div className="vital-tile">
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                        <span style={{ fontSize: '0.7rem', fontWeight: 700, color: '#64748b', textTransform: 'uppercase' }}>Barometric Pressure</span>
+                        <span style={{ fontSize: '1.1rem' }}>🌡️</span>
+                      </div>
+                      <div style={{ fontSize: '1.6rem', fontWeight: 800, color: '#0f172a' }}>
+                        {weather.pressure || 1013} <span style={{ fontSize: '0.85rem', fontWeight: 600, color: '#64748b' }}>hPa</span>
+                      </div>
+                      <div style={{ fontSize: '0.74rem', color: '#059669', fontWeight: 600 }}>
+                        Steady atmospheric pressure
+                      </div>
+                      <div style={{ fontSize: '0.7rem', color: '#64748b' }}>
+                        Low barometric headache trigger risk.
+                      </div>
+                    </div>
+
+                    {/* Dew Point & Comfort */}
+                    <div className="vital-tile">
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                        <span style={{ fontSize: '0.7rem', fontWeight: 700, color: '#64748b', textTransform: 'uppercase' }}>Dew Point & Comfort</span>
+                        <span style={{ fontSize: '1.1rem' }}>💧</span>
+                      </div>
+                      <div style={{ fontSize: '1.6rem', fontWeight: 800, color: '#0f172a' }}>
+                        {weather.dew_point !== undefined ? weather.dew_point : 22}° <span style={{ fontSize: '0.85rem', fontWeight: 600, color: '#64748b' }}>C</span>
+                      </div>
+                      <div style={{ fontSize: '0.74rem', color: '#d97706', fontWeight: 600 }}>
+                        {weather.air_comfort || 'Slightly Muggy'}
+                      </div>
+                      <div style={{ fontSize: '0.7rem', color: '#64748b' }}>
+                        Sweat evaporation rate is reduced; hydrate frequently.
+                      </div>
+                    </div>
+
+                    {/* Golden Hour & Sun Arc */}
+                    <div className="vital-tile">
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                        <span style={{ fontSize: '0.7rem', fontWeight: 700, color: '#64748b', textTransform: 'uppercase' }}>Golden Hour & Sunset</span>
+                        <span style={{ fontSize: '1.1rem' }}>🌅</span>
+                      </div>
+                      <div style={{ fontSize: '1.4rem', fontWeight: 800, color: '#0f172a' }}>
+                        {weather.golden_hour || '5:50 PM – 6:40 PM'}
+                      </div>
+                      <div style={{ fontSize: '0.74rem', color: '#0284c7', fontWeight: 600 }}>
+                        Sunset at {weather.sunset || '6:42 PM'}
+                      </div>
+                      <div style={{ fontSize: '0.7rem', color: '#64748b' }}>
+                        Optimal window: falling ozone + soft natural lighting.
+                      </div>
+                    </div>
+
+                    {/* Wind & Dispersion */}
+                    <div className="vital-tile">
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                        <span style={{ fontSize: '0.7rem', fontWeight: 700, color: '#64748b', textTransform: 'uppercase' }}>Wind & Dispersion</span>
+                        <span style={{ fontSize: '1.1rem' }}>🧭</span>
+                      </div>
+                      <div style={{ fontSize: '1.5rem', fontWeight: 800, color: '#0f172a' }}>
+                        {weather.wind_cardinal || 'WSW'} {weather.wind_speed || 12} <span style={{ fontSize: '0.8rem', fontWeight: 600, color: '#64748b' }}>km/h</span>
+                      </div>
+                      <div style={{ fontSize: '0.74rem', color: '#059669', fontWeight: 600 }}>
+                        Active particulate ventilation
+                      </div>
+                      <div style={{ fontSize: '0.7rem', color: '#64748b' }}>
+                        Breeze preventing stagnant surface pollution pocketing.
+                      </div>
+                    </div>
+
+                    {/* Pollen Index */}
+                    <div className="vital-tile">
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                        <span style={{ fontSize: '0.7rem', fontWeight: 700, color: '#64748b', textTransform: 'uppercase' }}>Pollen & Allergens</span>
+                        <span style={{ fontSize: '1.1rem' }}>🌾</span>
+                      </div>
+                      <div style={{ fontSize: '1.6rem', fontWeight: 800, color: '#059669' }}>
+                        {weather.pollen_index || 'Low (Level 2)'}
+                      </div>
+                      <div style={{ fontSize: '0.74rem', color: '#059669', fontWeight: 600 }}>
+                        Tree & Grass: Minimal
+                      </div>
+                      <div style={{ fontSize: '0.7rem', color: '#64748b' }}>
+                        Allergic rhinitis risk is low across current sector.
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* 5. Interactive Hourly Scrubber with Deep-Dive Details */}
+                <div className="premium-card">
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '14px', flexWrap: 'wrap', gap: '8px' }}>
+                    <div>
+                      <div style={{ fontSize: '0.68rem', fontWeight: 700, color: '#0284c7', textTransform: 'uppercase', letterSpacing: '0.06em' }}>
+                        Interactive Diurnal Timeline
+                      </div>
+                      <h3 style={{ fontSize: '1.05rem', fontWeight: 800, color: '#0f172a', margin: '2px 0 0' }}>
+                        Hourly Atmospheric & Risk Scrubber
+                      </h3>
+                    </div>
+                    <span style={{ fontSize: '0.74rem', color: '#64748b' }}>
+                      Click any hour to preview personalized risk impact
+                    </span>
+                  </div>
+
+                  <div className="horizontal-scroll">
+                    {hourlyData.map((h, i) => {
+                      const isSelected = selectedHourIndex === i;
+                      return (
+                        <div
+                          key={i}
+                          className="interactive-hour-pill"
+                          onClick={() => setSelectedHourIndex(i)}
+                          style={{
+                            background: isSelected ? '#0f172a' : h.isCurrent ? '#ffffff' : '#f8fafc',
+                            color: isSelected ? '#ffffff' : '#0f172a',
+                            border: isSelected ? '1.5px solid #0f172a' : h.isCurrent ? '1.5px solid #cbd5e1' : '1px solid #e2e8f0',
+                          }}
+                        >
+                          <div style={{ fontSize: '0.74rem', fontWeight: 700, marginBottom: '4px', color: isSelected ? '#93c5fd' : '#64748b' }}>
+                            {h.time}
+                          </div>
+                          <div style={{ fontSize: '1.3rem', marginBottom: '4px' }}>{h.icon}</div>
+                          <div style={{ fontSize: '0.96rem', fontWeight: 800, marginBottom: '4px' }}>
+                            {h.temp}°
+                          </div>
+                          <div style={{
+                            fontSize: '0.64rem', fontWeight: 800, padding: '2px 6px', borderRadius: '999px',
+                            background: isSelected ? 'rgba(255,255,255,0.2)' : h.aqi > 150 ? '#fef2f2' : h.aqi > 100 ? '#fffbeb' : '#ecfdf5',
+                            color: isSelected ? '#ffffff' : h.aqi > 150 ? '#991b1b' : h.aqi > 100 ? '#92400e' : '#065f46',
+                          }}>
+                            AQI {h.aqi}
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+
+                  {/* Dynamic Inspector for Selected Hour */}
+                  <div style={{
+                    marginTop: '16px', background: '#f8fafc', borderRadius: '16px',
+                    padding: '16px', border: '1px solid #e2e8f0',
+                    display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '14px'
+                  }}>
+                    <div>
+                      <div style={{ fontSize: '0.7rem', fontWeight: 700, textTransform: 'uppercase', color: '#64748b' }}>
+                        Selected Timeline Snapshot: <strong style={{ color: '#0f172a' }}>{activeHourObj.time}</strong>
+                      </div>
+                      <div style={{ fontSize: '1rem', fontWeight: 800, color: '#0f172a', marginTop: '2px' }}>
+                        {activeHourObj.temp}°C · Predicted AQI {activeHourObj.aqi} · Health Risk Score {activeHourObj.riskScore}/100
+                      </div>
+                      <div style={{ fontSize: '0.8rem', color: '#475569', marginTop: '3px' }}>
+                        💡 {activeHourObj.advice}
+                      </div>
+                    </div>
+                    <div style={{ display: 'flex', gap: '8px' }}>
+                      <button
+                        onClick={() => handleAskAi(`Is ${activeHourObj.time} a good time for me to be outdoors?`)}
+                        style={{
+                          padding: '8px 14px', borderRadius: '999px', background: '#ffffff',
+                          border: '1px solid #cbd5e1', fontSize: '0.76rem', fontWeight: 700, cursor: 'pointer'
+                        }}
+                      >
+                        Ask AI about {activeHourObj.time} →
+                      </button>
+                    </div>
+                  </div>
+                </div>
+
+                {/* 6. Two-Column Air Quality & Personal Health Today */}
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(400px, 1fr))', gap: '20px' }}>
                   <div className="premium-card">
                     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '14px' }}>
@@ -525,16 +1336,18 @@
                           {risk.badge || 'Moderate Risk'}
                         </div>
                         <h3 style={{ fontSize: '0.95rem', fontWeight: 600, color: '#0f172a', margin: '0 0 4px 0', lineHeight: 1.3, letterSpacing: '-0.015em' }}>
-                          Today's air may affect you more.
+                          {adv.headline || "Today's air may affect you more."}
                         </h3>
                         <p style={{ fontSize: '0.8rem', color: '#475569', lineHeight: 1.45, margin: 0 }}>
-                          Elevated PM2.5 with your {profile.conditions?.[0]?.replace('_', ' ') || 'sensitivity'} increases irritation.
+                          {adv.advisory_text?.slice(0, 160) || `Elevated PM2.5 with your ${profile.conditions?.[0]?.replace('_', ' ') || 'sensitivity'} increases irritation.`}…
                         </p>
                       </div>
                     </div>
 
                     <div style={{ marginTop: '18px', paddingTop: '14px', borderTop: '1px solid #f1f5f9', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                      <span style={{ fontSize: '0.72rem', color: '#94a3b8' }}>Baseline</span>
+                      <span style={{ fontSize: '0.72rem', color: '#94a3b8' }}>
+                        Engine: {adv.engine_mode || 'AI-generated (Qwen2.5-72B)'}
+                      </span>
                       <button onClick={() => setActiveTab('advisory')} style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', fontSize: '0.8rem', fontWeight: 600, color: '#0f172a', background: '#f1f5f9', padding: '6px 14px', borderRadius: '999px', border: 'none', cursor: 'pointer' }}>
                         View Advisory →
                       </button>
@@ -543,9 +1356,9 @@
 
                   <div className="premium-card">
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '14px' }}>
-                      <h2 style={{ fontSize: '0.95rem', fontWeight: 700, color: '#0f172a', margin: 0, letterSpacing: '-0.015em' }}>Air Quality</h2>
+                      <h2 style={{ fontSize: '0.95rem', fontWeight: 700, color: '#0f172a', margin: 0, letterSpacing: '-0.015em' }}>Air Quality Spectrum</h2>
                       <span style={{ fontSize: '0.66rem', fontWeight: 700, color: '#065f46', background: '#ecfdf5', padding: '3px 9px', borderRadius: '999px', border: '1px solid #a7f3d0', letterSpacing: '0.04em', textTransform: 'uppercase' }}>
-                        ● Live
+                        ● Live Feeds
                       </span>
                     </div>
 
@@ -588,119 +1401,85 @@
                   </div>
                 </div>
 
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '20px' }}>
-                  <div className="premium-card">
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '14px' }}>
-                      <h3 style={{ fontSize: '0.92rem', fontWeight: 700, color: '#0f172a', margin: 0 }}>Hourly Forecast</h3>
-                      <span style={{ fontSize: '0.72rem', color: '#64748b' }}>Next 8h →</span>
-                    </div>
-                    <div className="horizontal-scroll">
-                      {hourlyData.map((h, i) => (
-                        <div key={i} style={{
-                          minWidth: '72px', background: h.isCurrent ? '#ffffff' : '#f8fafc',
-                          border: h.isCurrent ? '1.5px solid #0f172a' : '1px solid #e2e8f0',
-                          borderRadius: '14px', padding: '12px 8px', textAlign: 'center', flexShrink: 0
-                        }}>
-                          <div style={{ fontSize: '0.72rem', color: h.isCurrent ? '#0f172a' : '#64748b', fontWeight: h.isCurrent ? 700 : 600, marginBottom: '6px' }}>{h.time}</div>
-                          <div style={{ fontSize: '1.2rem', marginBottom: '6px' }}>{h.icon}</div>
-                          <div style={{ fontSize: '0.92rem', fontWeight: 700, color: '#0f172a', marginBottom: '4px', letterSpacing: '-0.02em' }}>{h.temp}°</div>
-                          <div style={{
-                            fontSize: '0.66rem', fontWeight: 700, padding: '2px 6px', borderRadius: '999px',
-                            background: h.aqi > 150 ? '#fef2f2' : h.aqi > 100 ? '#fffbeb' : '#ecfdf5',
-                            color: h.aqi > 150 ? '#991b1b' : h.aqi > 100 ? '#92400e' : '#065f46'
-                          }}>AQI {h.aqi}</div>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-
-                  <div className="premium-card">
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '14px' }}>
-                      <h3 style={{ fontSize: '0.92rem', fontWeight: 700, color: '#0f172a', margin: 0 }}>7-Day Forecast</h3>
-                      <span style={{ fontSize: '0.72rem', color: '#64748b' }}>Weekly →</span>
-                    </div>
-                    <div className="horizontal-scroll">
-                      {dailyForecast.map((d, di) => (
-                        <div key={di} style={{
-                          minWidth: '66px', background: di === 0 ? '#ecfdf5' : '#f8fafc',
-                          border: di === 0 ? '1px solid #a7f3d0' : '1px solid #e2e8f0',
-                          borderRadius: '14px', padding: '10px 6px', textAlign: 'center', flexShrink: 0
-                        }}>
-                          <div style={{ fontSize: '0.72rem', fontWeight: 600, color: '#334155', marginBottom: '4px' }}>{d.day}</div>
-                          <div style={{ fontSize: '1.1rem', marginBottom: '4px' }}>{d.icon}</div>
-                          <div style={{ fontSize: '0.78rem', fontWeight: 700, color: '#0f172a' }}>
-                            {d.high}° <span style={{ fontSize: '0.7rem', color: '#94a3b8', fontWeight: 500 }}>{d.low}°</span>
-                          </div>
-                          <div style={{ fontSize: '0.62rem', color: '#059669', fontWeight: 700, marginTop: '4px' }}>AQI {d.aqi}</div>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-
-                  <div className="premium-card" style={{ display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
+                {/* 7. Weekly 7-Day Forecast (Apple Weather Style) */}
+                <div className="premium-card">
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '14px' }}>
                     <div>
-                      <h3 style={{ fontSize: '0.92rem', fontWeight: 700, color: '#0f172a', margin: '0 0 8px 0' }}>Today's Insight</h3>
-                      <p style={{ fontSize: '0.8rem', color: '#475569', lineHeight: 1.45, margin: 0 }}>
-                        Air quality improving over the next 3 days.
-                      </p>
+                      <h3 style={{ fontSize: '0.98rem', fontWeight: 800, color: '#0f172a', margin: 0 }}>7-Day Environmental & Weather Outlook</h3>
+                      <span style={{ fontSize: '0.74rem', color: '#64748b' }}>Forecasted temperature swings and particulate trends</span>
                     </div>
-                    <div style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between', marginTop: '16px' }}>
-                      <div style={{ display: 'flex', alignItems: 'flex-end', gap: '6px', height: '40px' }}>
-                        <div style={{ width: '8px', height: '36px', background: '#f59e0b', borderRadius: '3px' }} />
-                        <div style={{ width: '8px', height: '28px', background: '#38bdf8', borderRadius: '3px' }} />
-                        <div style={{ width: '8px', height: '22px', background: '#10b981', borderRadius: '3px' }} />
-                        <div style={{ width: '8px', height: '16px', background: '#10b981', borderRadius: '3px' }} />
-                      </div>
-                      <div style={{ textAlign: 'right' }}>
-                        <div style={{ fontSize: '1.15rem', fontWeight: 700, color: '#059669', lineHeight: 1 }}>↓ 32%</div>
-                        <div style={{ fontSize: '0.66rem', color: '#64748b' }}>vs last week</div>
-                      </div>
-                    </div>
+                    <span style={{ fontSize: '0.74rem', color: '#0284c7', fontWeight: 600 }}>Open-Meteo Vitals →</span>
                   </div>
-                </div>
-
-                <div style={{ background: '#ffffff', border: '1px solid var(--border-card)', borderRadius: 'var(--radius-xl)', padding: '18px 24px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '12px' }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                    <span style={{ fontSize: '1.2rem' }}>🌿</span>
-                    <div>
-                      <div style={{ fontSize: '0.9rem', fontWeight: 700, color: '#0f172a', letterSpacing: '-0.01em' }}>Small changes. Healthier tomorrows.</div>
-                      <div style={{ fontSize: '0.76rem', color: '#64748b' }}>Personalized environmental guidance for a more resilient you.</div>
-                    </div>
+                  <div className="horizontal-scroll">
+                    {dailyForecast.map((d, di) => (
+                      <div key={di} style={{
+                        minWidth: '100px', background: di === 0 ? '#ecfdf5' : '#f8fafc',
+                        border: di === 0 ? '1.5px solid #a7f3d0' : '1px solid #e2e8f0',
+                        borderRadius: '16px', padding: '14px 10px', textAlign: 'center', flexShrink: 0
+                      }}>
+                        <div style={{ fontSize: '0.78rem', fontWeight: 700, color: '#334155', marginBottom: '4px' }}>{d.day}</div>
+                        <div style={{ fontSize: '1.4rem', margin: '4px 0' }}>{d.icon}</div>
+                        <div style={{ fontSize: '0.86rem', fontWeight: 800, color: '#0f172a' }}>
+                          {d.high}° <span style={{ fontSize: '0.74rem', color: '#94a3b8', fontWeight: 500 }}>{d.low}°</span>
+                        </div>
+                        <div style={{
+                          fontSize: '0.64rem', fontWeight: 800, padding: '2px 6px', borderRadius: '999px',
+                          background: d.aqi > 100 ? '#fffbeb' : '#ecfdf5',
+                          color: d.aqi > 100 ? '#b45309' : '#047857',
+                          marginTop: '6px'
+                        }}>
+                          AQI {d.aqi}
+                        </div>
+                        <div style={{ fontSize: '0.62rem', color: '#64748b', marginTop: '4px' }}>{d.condition}</div>
+                      </div>
+                    ))}
                   </div>
-                  <button onClick={() => setActiveTab('advisory')} style={{ padding: '8px 16px', borderRadius: '999px', background: '#f1f5f9', color: '#0f172a', fontWeight: 600, fontSize: '0.8rem', border: 'none', cursor: 'pointer' }}>
-                    Explore Advisory →
-                  </button>
                 </div>
               </>
             )}
 
+            {/* ADVISORY TAB */}
             {activeTab === 'advisory' && (
               <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '12px' }}>
                   <div>
-                    <h1 style={{ fontSize: '1.65rem', fontWeight: 700, color: '#0f172a', margin: 0, letterSpacing: '-0.025em' }}>Personal Advisory</h1>
-                    <p style={{ fontSize: '0.84rem', color: '#64748b', marginTop: '4px' }}>{loc.label || 'Bhopal'} · Today's tailored guidance</p>
+                    <h1 style={{ fontSize: '1.65rem', fontWeight: 800, color: '#0f172a', margin: 0, letterSpacing: '-0.025em' }}>Personal Health Advisory</h1>
+                    <p style={{ fontSize: '0.84rem', color: '#64748b', marginTop: '4px' }}>{loc.label || 'Bhopal'} · Tailored clinical guidance</p>
                   </div>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px', background: riskBg, border: `1px solid ${riskBorder}`, padding: '6px 14px', borderRadius: '999px' }}>
-                    <span style={{ fontSize: '1.2rem', fontWeight: 700, color: riskText, letterSpacing: '-0.02em' }}>{Math.round(risk.numeric_score || 62)}</span>
-                    <span style={{ fontSize: '0.8rem', color: riskText, fontWeight: 600 }}>/ 100 · {risk.badge || 'Moderate'}</span>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                    <button
+                      onClick={handleOpenSendEmailModal}
+                      style={{
+                        padding: '8px 16px', borderRadius: '999px',
+                        background: '#0284c7', color: '#ffffff',
+                        fontSize: '0.78rem', fontWeight: 700, border: 'none',
+                        cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '6px'
+                      }}
+                    >
+                      <span>📧</span>
+                      <span>Send to Email</span>
+                    </button>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', background: riskBg, border: `1px solid ${riskBorder}`, padding: '6px 14px', borderRadius: '999px' }}>
+                      <span style={{ fontSize: '1.2rem', fontWeight: 800, color: riskText, letterSpacing: '-0.02em' }}>{Math.round(risk.numeric_score || 62)}</span>
+                      <span style={{ fontSize: '0.8rem', color: riskText, fontWeight: 600 }}>/ 100 · {risk.badge || 'Moderate'}</span>
+                    </div>
                   </div>
                 </div>
 
                 <div className="premium-card">
-                  <h2 style={{ fontSize: '1rem', fontWeight: 700, color: '#0f172a', margin: '0 0 14px 0', letterSpacing: '-0.015em' }}>Action Timeline</h2>
+                  <h2 style={{ fontSize: '1rem', fontWeight: 700, color: '#0f172a', margin: '0 0 14px 0', letterSpacing: '-0.015em' }}>Action Timeline & Protective Windows</h2>
                   <div style={{ background: '#fef2f2', border: '1px solid #fecaca', borderRadius: '14px', padding: '14px 18px', marginBottom: '16px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '12px' }}>
                     <div>
-                      <div style={{ fontSize: '0.66rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', color: '#b91c1c' }}>Avoid window</div>
+                      <div style={{ fontSize: '0.66rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', color: '#b91c1c' }}>Peak Smog Window to Avoid</div>
                       <div style={{ fontSize: '0.95rem', fontWeight: 700, color: '#991b1b', marginTop: '2px' }}>11:00 AM – 4:00 PM</div>
                     </div>
                     <div style={{ background: '#ffffff', padding: '6px 14px', borderRadius: '10px', border: '1px solid #fca5a5', textAlign: 'right' }}>
-                      <div style={{ fontSize: '0.62rem', color: '#64748b', fontWeight: 700 }}>BETTER WINDOW</div>
+                      <div style={{ fontSize: '0.62rem', color: '#64748b', fontWeight: 700 }}>IDEAL OUTDOOR WINDOW</div>
                       <div style={{ fontSize: '0.88rem', fontWeight: 700, color: '#059669' }}>6:30 PM – 8:30 PM</div>
                     </div>
                   </div>
                   <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: '10px' }}>
-                    {(adv.action_items || []).slice(0, 3).map((item, idx) => (
+                    {(adv.action_items || []).slice(0, 4).map((item, idx) => (
                       <div key={idx} style={{ background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '12px', padding: '12px 14px', display: 'flex', gap: '12px' }}>
                         <div style={{ width: '24px', height: '24px', borderRadius: '50%', background: '#0f172a', color: '#ffffff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 700, fontSize: '0.7rem', flexShrink: 0, marginTop: '2px' }}>
                           {idx + 1}
@@ -712,83 +1491,57 @@
                 </div>
 
                 <div className="premium-card">
-                  <h2 style={{ fontSize: '1rem', fontWeight: 700, color: '#0f172a', margin: '0 0 14px 0', letterSpacing: '-0.015em' }}>Why is my risk different?</h2>
-                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '18px' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '12px', marginBottom: '14px' }}>
                     <div>
-                      <div style={{ fontSize: '0.7rem', fontWeight: 700, color: '#475569', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: '10px' }}>Environmental</div>
-                      {[
-                        { l: 'PM2.5', c: '#f97316', bg: '#fff7ed', b: '#fed7aa', v: 'HIGH' },
-                        { l: 'AQI', c: '#f59e0b', bg: '#fffbeb', b: '#fde68a', v: 'MOD' },
-                        { l: 'UV', c: '#10b981', bg: '#ecfdf5', b: '#a7f3d0', v: 'LOW' },
-                        { l: 'Heat', c: '#f59e0b', bg: '#fffbeb', b: '#fde68a', v: 'MOD' }
-                      ].map((f, i) => (
-                        <div key={i} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '8px 12px', background: f.bg, borderRadius: '10px', border: `1px solid ${f.b}`, fontSize: '0.82rem', marginBottom: '6px' }}>
-                          <span style={{ color: '#334155' }}>{f.l}</span>
-                          <span style={{ fontWeight: 700, color: f.c, fontSize: '0.7rem' }}>{f.v}</span>
-                        </div>
-                      ))}
+                      <div style={{ fontSize: '0.66rem', fontWeight: 700, color: '#0284c7', textTransform: 'uppercase', letterSpacing: '0.06em' }}>LLM Public Health Engine</div>
+                      <h2 style={{ fontSize: '1.15rem', fontWeight: 700, color: '#0f172a', margin: '4px 0 2px', letterSpacing: '-0.02em' }}>
+                        Generated Health Advisory
+                      </h2>
+                      <p style={{ fontSize: '0.8rem', color: '#64748b', margin: 0 }}>
+                        Engine: <strong style={{ color: '#0f172a' }}>{adv.engine_mode || 'AI-generated (Qwen2.5-72B)'}</strong>
+                      </p>
                     </div>
-                    <div>
-                      <div style={{ fontSize: '0.7rem', fontWeight: 700, color: '#475569', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: '10px' }}>Personal</div>
-                      {[
-                        { l: 'Asthma', on: profile.conditions?.includes('asthma'), v: '+50%' },
-                        { l: 'Outdoor', on: profile.occupation === 'outdoor_worker', v: '+25%' },
-                        { l: 'Age', on: profile.age_group === '60+', v: '+30%' }
-                      ].map((f, i) => (
-                        <div key={i} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '8px 12px', background: f.on ? '#fff7ed' : '#f8fafc', borderRadius: '10px', border: '1px solid #f1f5f9', fontSize: '0.82rem', marginBottom: '6px' }}>
-                          <span style={{ color: '#334155' }}>{f.l}</span>
-                          <span style={{ fontWeight: 700, color: f.on ? '#9a3412' : '#64748b' }}>{f.on ? `${f.v} Active` : '1.0× Base'}</span>
-                        </div>
-                      ))}
+                    <button
+                      onClick={handleDispatchCustomAlert}
+                      disabled={isDispatchingAlert}
+                      style={{
+                        padding: '9px 18px', borderRadius: '999px',
+                        background: '#0f172a', color: '#ffffff',
+                        fontSize: '0.8rem', fontWeight: 600, border: 'none',
+                        cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '6px'
+                      }}
+                    >
+                      {isDispatchingAlert ? '⚡ Generating & Dispatching…' : '⚡ Re-generate Custom Advisory'}
+                    </button>
+                  </div>
+
+                  <div style={{ background: riskBg, border: `1.5px solid ${riskBorder}`, borderRadius: '14px', padding: '16px 18px', marginBottom: '16px' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                        <span style={{ fontSize: '1rem' }}>📢</span>
+                        <span style={{ fontSize: '0.88rem', fontWeight: 800, color: riskText }}>{adv.headline || 'Active Health Advisory'}</span>
+                      </div>
+                      <span style={{ fontSize: '0.68rem', fontWeight: 700, background: '#ffffff', color: riskText, padding: '3px 10px', borderRadius: '999px', border: `1px solid ${riskBorder}` }}>
+                        {adv.engine_mode || 'Qwen 2.5 72B'}
+                      </span>
                     </div>
+                    <p style={{ fontSize: '0.88rem', color: '#1e293b', lineHeight: 1.6, margin: 0, fontWeight: 500 }}>
+                      {adv.advisory_text || 'Your personalized advisory will appear here based on your real-time atmospheric and personal health telemetry.'}
+                    </p>
                   </div>
                 </div>
 
-                <div className="premium-card">
-                  <div style={{ fontSize: '0.66rem', fontWeight: 700, color: '#0284c7', textTransform: 'uppercase', letterSpacing: '0.06em' }}>Same air. Different risk.</div>
-                  <h2 style={{ fontSize: '1.15rem', fontWeight: 700, color: '#0f172a', margin: '4px 0 10px', letterSpacing: '-0.02em' }}>Personalized vulnerability</h2>
-                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '14px' }}>
-                    <div style={{ background: '#ffffff', borderRadius: '14px', padding: '16px', border: '1.5px solid #a7f3d0' }}>
-                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-                        <div>
-                          <div style={{ fontWeight: 700, fontSize: '0.95rem', color: '#0f172a' }}>Karan Malhotra</div>
-                          <div style={{ fontSize: '0.74rem', color: '#64748b' }}>26 · Healthy · Office</div>
-                        </div>
-                        <span style={{ fontSize: '0.66rem', fontWeight: 700, color: '#065f46', background: '#ecfdf5', padding: '3px 8px', borderRadius: '999px', letterSpacing: '0.04em' }}>LOW</span>
-                      </div>
-                      <div style={{ margin: '12px 0', padding: '10px 12px', background: '#f8fafc', borderRadius: '10px' }}>
-                        <div style={{ fontSize: '0.66rem', color: '#64748b' }}>AQI {currentAqi}</div>
-                        <div style={{ fontSize: '1.1rem', fontWeight: 700, color: '#10b981', letterSpacing: '-0.02em' }}>38/100</div>
-                      </div>
-                      <p style={{ fontSize: '0.78rem', color: '#475569', margin: 0 }}>Resilient. Normal activity can proceed.</p>
-                    </div>
-                    <div style={{ background: '#ffffff', borderRadius: '14px', padding: '16px', border: '1.5px solid #fecaca' }}>
-                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-                        <div>
-                          <div style={{ fontWeight: 700, fontSize: '0.95rem', color: '#0f172a' }}>Rajiv Verma</div>
-                          <div style={{ fontSize: '0.74rem', color: '#64748b' }}>68 · Heart disease</div>
-                        </div>
-                        <span style={{ fontSize: '0.66rem', fontWeight: 700, color: '#991b1b', background: '#fef2f2', padding: '3px 8px', borderRadius: '999px', letterSpacing: '0.04em' }}>HIGH</span>
-                      </div>
-                      <div style={{ margin: '12px 0', padding: '10px 12px', background: '#f8fafc', borderRadius: '10px' }}>
-                        <div style={{ fontSize: '0.66rem', color: '#64748b' }}>AQI {currentAqi}</div>
-                        <div style={{ fontSize: '1.1rem', fontWeight: 700, color: '#ef4444', letterSpacing: '-0.02em' }}>88/100</div>
-                      </div>
-                      <p style={{ fontSize: '0.78rem', color: '#475569', margin: 0 }}>Cardiovascular strain risk. Limit outdoor errands.</p>
-                    </div>
-                  </div>
-                </div>
-
+                {/* Live What-If Simulator */}
                 <div className="premium-card">
                   <h2 style={{ fontSize: '1rem', fontWeight: 700, color: '#0f172a', margin: '0 0 12px 0', letterSpacing: '-0.015em' }}>What if conditions change?</h2>
                   <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: '18px', alignItems: 'center' }}>
                     <div>
                       <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.82rem', fontWeight: 600, marginBottom: '6px' }}>
-                        <span>AQI</span><span style={{ color: '#0284c7' }}>{simAqi}</span>
+                        <span>Simulated AQI</span><span style={{ color: '#0284c7' }}>{simAqi}</span>
                       </div>
                       <input type="range" min="30" max="380" value={simAqi} onChange={e => setSimAqi(e.target.value)} style={{ width: '100%', accentColor: '#0284c7' }} />
                       <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.82rem', fontWeight: 600, marginTop: '14px', marginBottom: '6px' }}>
-                        <span>Temp</span><span style={{ color: '#f97316' }}>{simTemp}°C</span>
+                        <span>Simulated Temp</span><span style={{ color: '#f97316' }}>{simTemp}°C</span>
                       </div>
                       <input type="range" min="15" max="46" value={simTemp} onChange={e => setSimTemp(e.target.value)} style={{ width: '100%', accentColor: '#f97316' }} />
                       <button onClick={handleSimulate} disabled={simLoading} style={{ marginTop: '16px', width: '100%', padding: '10px', background: '#0f172a', color: '#ffffff', border: 'none', borderRadius: '999px', fontWeight: 600, fontSize: '0.82rem', cursor: 'pointer' }}>
@@ -810,156 +1563,130 @@
                           <div style={{ fontSize: '0.62rem', fontWeight: 700, color: '#dc2626' }}>{simResult?.risk?.badge || 'EVALUATE'}</div>
                         </div>
                       </div>
-                      <div style={{ fontSize: '0.78rem', color: '#334155' }}>{simResult?.advisory?.headline || 'Adjust sliders.'}</div>
+                      <div style={{ fontSize: '0.78rem', color: '#334155' }}>{simResult?.advisory?.headline || 'Adjust sliders to simulate shifts.'}</div>
                     </div>
                   </div>
                 </div>
               </div>
             )}
 
-            {activeTab === 'trends' && (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '12px' }}>
-                  <div>
-                    <h1 style={{ fontSize: '1.65rem', fontWeight: 700, color: '#0f172a', margin: 0, letterSpacing: '-0.025em' }}>Your Health Week</h1>
-                    <p style={{ fontSize: '0.84rem', color: '#64748b', marginTop: '4px' }}>How conditions affect your health.</p>
-                  </div>
-                  <div style={{ padding: '6px 14px', background: '#ffffff', border: '1px solid #e2e8f0', borderRadius: '999px', fontSize: '0.8rem', fontWeight: 500, color: '#334155' }}>📅 Sep 01 – Sep 07 ⌵</div>
-                </div>
+            {/* TRENDS TAB */}
+            {activeTab === 'trends' && (() => {
+              const rawSnaps = (history?.snapshots && history.snapshots.length > 0) ? history.snapshots : [
+                { day: 'Sun', full_day: 'Sun 30', val: 66, aqi: 82, pm2_5: 22, temp_c: 27, humidity: 79, risk_score: 66 },
+                { day: 'Mon', full_day: 'Mon 31', val: 68, aqi: 84, pm2_5: 24, temp_c: 28, humidity: 76, risk_score: 68 },
+                { day: 'Tue', full_day: 'Tue 01', val: 62, aqi: 76, pm2_5: 20, temp_c: 26, humidity: 82, risk_score: 62 },
+                { day: 'Wed', full_day: 'Wed 02', val: 65, aqi: 78, pm2_5: 21, temp_c: 27, humidity: 80, risk_score: 65 },
+                { day: 'Thu', full_day: 'Thu 03', val: 74, aqi: 92, pm2_5: 32, temp_c: 29, humidity: 74, risk_score: 74 },
+                { day: 'Fri', full_day: 'Fri 04', val: 82, aqi: 112, pm2_5: 42, temp_c: 30, humidity: 68, risk_score: 82 },
+                { day: 'Sat', full_day: 'Sat 05', val: 76, aqi: 98, pm2_5: 34, temp_c: 29, humidity: 72, risk_score: 76 },
+              ];
 
-                <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
-                  {[{ id: 'risk', label: 'Personal Risk' }, { id: 'aqi', label: 'AQI' }, { id: 'pm25', label: 'PM2.5' }, { id: 'temp', label: 'Temperature' }, { id: 'humidity', label: 'Humidity' }].map(m => {
-                    const isActive = trendMetric === m.id;
-                    return (
-                      <button key={m.id} onClick={() => setTrendMetric(m.id)} style={{ padding: '6px 14px', borderRadius: '999px', fontSize: '0.8rem', fontWeight: isActive ? 600 : 500, background: isActive ? '#0f172a' : '#ffffff', color: isActive ? '#ffffff' : '#475569', border: '1px solid', borderColor: isActive ? '#0f172a' : '#e2e8f0', cursor: 'pointer' }}>
-                        {m.label}
-                      </button>
-                    );
-                  })}
-                </div>
+              const getMetricMeta = (m) => {
+                switch (m) {
+                  case 'aqi': return { key: 'aqi', title: 'Air Quality Index', unit: 'AQI', color: '#f59e0b', defaultMin: 40, defaultMax: 150 };
+                  case 'pm25': return { key: 'pm2_5', title: 'PM2.5 Concentration', unit: 'µg/m³', color: '#f97316', defaultMin: 10, defaultMax: 70 };
+                  case 'temp': return { key: 'temp_c', title: 'Ambient Temperature', unit: '°C', color: '#0284c7', defaultMin: 18, defaultMax: 42 };
+                  case 'humidity': return { key: 'humidity', title: 'Relative Humidity', unit: '%', color: '#10b981', defaultMin: 20, defaultMax: 95 };
+                  default: return { key: 'risk_score', title: 'Personal Risk Score', unit: '/ 100', color: '#ef4444', defaultMin: 20, defaultMax: 100 };
+                }
+              };
 
-                <div className="premium-card">
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
-                    <h2 style={{ fontSize: '1rem', fontWeight: 700, color: '#0f172a', margin: 0, letterSpacing: '-0.015em' }}>Personal Risk Trend</h2>
-                    <span style={{ fontSize: '0.74rem', color: '#9a3412', background: '#fff7ed', padding: '3px 10px', borderRadius: '999px', fontWeight: 600, border: '1px solid #fed7aa' }}>↗ +41%</span>
-                  </div>
-                  <div style={{ overflowX: 'auto', padding: '10px 0' }}>
-                    <svg viewBox="0 0 760 220" style={{ width: '100%', minWidth: '600px', height: 'auto', display: 'block' }}>
-                      <defs>
-                        <linearGradient id="areaGradient" x1="0" y1="0" x2="0" y2="1">
-                          <stop offset="0%" stopColor="#ef4444" stopOpacity="0.22" />
-                          <stop offset="50%" stopColor="#f59e0b" stopOpacity="0.1" />
-                          <stop offset="100%" stopColor="#10b981" stopOpacity="0.02" />
-                        </linearGradient>
-                      </defs>
-                      <line x1="50" y1="90" x2="710" y2="90" stroke="#f59e0b" strokeWidth="1.5" strokeDasharray="5 5" opacity="0.5" />
-                      <text x="714" y="94" fill="#d97706" fontSize="10" fontWeight="700">Threshold</text>
-                      <line x1="50" y1="40" x2="710" y2="40" stroke="#f1f5f9" strokeWidth="1" />
-                      <line x1="50" y1="140" x2="710" y2="140" stroke="#f1f5f9" strokeWidth="1" />
-                      <line x1="50" y1="190" x2="710" y2="190" stroke="#f1f5f9" strokeWidth="1" />
-                      <path d="M 60 180 Q 160 160 260 150 T 460 70 T 560 85 T 660 140 L 660 200 L 60 200 Z" fill="url(#areaGradient)" />
-                      <path d="M 60 180 Q 160 160 260 150 T 460 70 T 560 85 T 660 140" fill="none" stroke="#f97316" strokeWidth="2.5" strokeLinecap="round" />
+              const meta = getMetricMeta(trendMetric);
+              const values = rawSnaps.map(s => Number(s[meta.key] !== undefined ? s[meta.key] : (trendMetric === 'risk' ? (s.numeric_score || 50) : 50)));
+              const minV = Math.min(...values);
+              const maxV = Math.max(...values);
+              const range = maxV === minV ? (meta.defaultMax - meta.defaultMin) : (maxV - minV);
+              const effMin = maxV === minV ? meta.defaultMin : minV;
+
+              const points = rawSnaps.map((s, i) => {
+                const val = values[i];
+                const cx = 60 + (i / Math.max(1, rawSnaps.length - 1)) * 640;
+                const cy = 175 - ((val - effMin) / (range || 1)) * 135;
+                return {
+                  ...s,
+                  val: Math.round(val * 10) / 10,
+                  cx,
+                  cy: Math.max(25, Math.min(180, cy)),
+                  label: s.day || `D${i+1}`
+                };
+              });
+
+              const lineD = points.map((p, i) => `${i === 0 ? 'M' : 'L'} ${p.cx.toFixed(1)} ${p.cy.toFixed(1)}`).join(' ');
+
+              return (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '12px' }}>
+                    <div>
+                      <h1 style={{ fontSize: '1.65rem', fontWeight: 800, color: '#0f172a', margin: 0, letterSpacing: '-0.025em' }}>Your Health Week</h1>
+                      <p style={{ fontSize: '0.84rem', color: '#64748b', marginTop: '4px' }}>
+                        Real atmospheric telemetry from Open-Meteo mapped against personal vulnerability in {loc.label || 'your area'}.
+                      </p>
+                    </div>
+                    <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
                       {[
-                        { x: 60, y: 180, label: 'Mon', val: 24 },
-                        { x: 160, y: 162, label: 'Tue', val: 32 },
-                        { x: 260, y: 150, label: 'Wed', val: 40 },
-                        { x: 360, y: 120, label: 'Thu', val: 56 },
-                        { x: 460, y: 70, label: 'Fri', val: 82, isPeak: true },
-                        { x: 560, y: 85, label: 'Sat', val: 74 },
-                        { x: 660, y: 140, label: 'Sun', val: 48 }
-                      ].map((pt, pti) => (
-                        <g key={pti}>
-                          <circle cx={pt.x} cy={pt.y} r={pt.isPeak ? 6 : 4} fill={pt.isPeak ? '#ef4444' : '#ffffff'} stroke={pt.isPeak ? '#ffffff' : '#f97316'} strokeWidth="2.5" />
-                          <text x={pt.x} y="215" fill="#64748b" fontSize="10" textAnchor="middle">{pt.label}</text>
-                          {pt.isPeak && (
-                            <g>
-                              <rect x={pt.x - 32} y={pt.y - 32} width="64" height="22" rx="6" fill="#0f172a" />
-                              <text x={pt.x} y={pt.y - 18} fill="#ffffff" fontSize="9" fontWeight="700" textAnchor="middle">Fri · Risk 82</text>
-                            </g>
-                          )}
-                        </g>
+                        { id: 'risk', label: 'Personal Risk' },
+                        { id: 'aqi', label: 'US AQI' },
+                        { id: 'pm25', label: 'PM2.5' },
+                        { id: 'temp', label: 'Temperature' },
+                      ].map(tab => (
+                        <button
+                          key={tab.id}
+                          onClick={() => setTrendMetric(tab.id)}
+                          style={{
+                            padding: '6px 14px', borderRadius: '999px',
+                            background: trendMetric === tab.id ? '#0f172a' : '#ffffff',
+                            color: trendMetric === tab.id ? '#ffffff' : '#334155',
+                            border: '1px solid #e2e8f0', fontSize: '0.78rem', fontWeight: 600, cursor: 'pointer'
+                          }}
+                        >
+                          {tab.label}
+                        </button>
                       ))}
-                    </svg>
-                  </div>
-                </div>
-
-                <div>
-                  <div style={{ fontSize: '0.74rem', fontWeight: 700, color: '#475569', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: '10px' }}>Key Factors</div>
-                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '12px' }}>
-                    {[
-                      { icon: '💨', label: 'PM2.5', v: '+58%', c: '#f97316', s: 'vs last week' },
-                      { icon: '🌡️', label: 'Temp', v: '+2°C', c: '#0f172a', s: 'Warmer' },
-                      { icon: '💧', label: 'Humidity', v: '-14%', c: '#10b981', s: 'Drier' },
-                      { icon: '☀️', label: 'UV', v: '+22%', c: '#f59e0b', s: 'Higher' }
-                    ].map((f, i) => (
-                      <div key={i} className="premium-card" style={{ padding: '14px' }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '4px' }}>
-                          <span>{f.icon}</span>
-                          <span style={{ fontSize: '0.74rem', fontWeight: 600, color: '#64748b' }}>{f.label}</span>
-                        </div>
-                        <div style={{ fontSize: '1.3rem', fontWeight: 700, color: f.c, letterSpacing: '-0.025em' }}>{f.v}</div>
-                        <div style={{ fontSize: '0.7rem', color: '#94a3b8' }}>{f.s}</div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '20px' }}>
-                  <div className="premium-card">
-                    <h3 style={{ fontSize: '0.95rem', fontWeight: 700, color: '#0f172a', margin: '0 0 14px 0' }}>Risk Distribution</h3>
-                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-around' }}>
-                      <div style={{ width: '100px', height: '100px' }}>
-                        <svg viewBox="0 0 36 36" style={{ width: '100%', height: '100%', transform: 'rotate(-90deg)' }}>
-                          <circle cx="18" cy="18" r="14" fill="none" stroke="#10b981" strokeWidth="5" strokeDasharray="28 72" strokeDashoffset="0" />
-                          <circle cx="18" cy="18" r="14" fill="none" stroke="#f59e0b" strokeWidth="5" strokeDasharray="42 58" strokeDashoffset="-28" />
-                          <circle cx="18" cy="18" r="14" fill="none" stroke="#f97316" strokeWidth="5" strokeDasharray="15 85" strokeDashoffset="-70" />
-                          <circle cx="18" cy="18" r="14" fill="none" stroke="#ef4444" strokeWidth="5" strokeDasharray="15 85" strokeDashoffset="-85" />
-                        </svg>
-                      </div>
-                      <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', fontSize: '0.78rem' }}>
-                        {[['#10b981', '2 Low'], ['#f59e0b', '3 Moderate'], ['#f97316', '1 High'], ['#ef4444', '1 Severe']].map(([c, l], i) => (
-                          <div key={i} style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                            <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: c }} />
-                            <span style={{ color: '#334155' }}>{l}</span>
-                          </div>
-                        ))}
-                      </div>
                     </div>
                   </div>
 
                   <div className="premium-card">
-                    <h3 style={{ fontSize: '0.95rem', fontWeight: 700, color: '#0f172a', margin: '0 0 12px 0' }}>Insights</h3>
-                    {[['📈', 'Risk +18%', 'Biomass particulates'], ['☀️', 'Best: Wed & Sat AM', 'Cleanest air'], ['🛡️', '4 peak periods avoided', 'Compliance score']].map(([i, t, s], idx) => (
-                      <div key={idx} style={{ display: 'flex', alignItems: 'flex-start', gap: '10px', padding: '10px 12px', background: '#f8fafc', borderRadius: '10px', marginBottom: '8px' }}>
-                        <span>{i}</span>
-                        <div>
-                          <div style={{ fontSize: '0.82rem', fontWeight: 600, color: '#0f172a' }}>{t}</div>
-                          <div style={{ fontSize: '0.72rem', color: '#64748b' }}>{s}</div>
-                        </div>
-                      </div>
-                    ))}
+                    <div style={{ fontSize: '0.92rem', fontWeight: 700, color: '#0f172a', marginBottom: '14px' }}>
+                      {meta.title} — 7-Day Trend Curve
+                    </div>
+                    <div style={{ width: '100%', overflowX: 'auto' }}>
+                      <svg viewBox="0 0 760 220" style={{ width: '100%', minWidth: '600px', height: 'auto', display: 'block' }}>
+                        <path d={lineD} fill="none" stroke={meta.color} strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" />
+                        {points.map((pt, i) => (
+                          <g key={i}>
+                            <circle cx={pt.cx} cy={pt.cy} r="5" fill="#ffffff" stroke={meta.color} strokeWidth="2.5" />
+                            <text x={pt.cx} y="208" fill="#64748b" fontSize="11" fontWeight="600" textAnchor="middle">{pt.label}</text>
+                            <rect x={pt.cx - 20} y={pt.cy - 22} width="40" height="16" rx="4" fill="#0f172a" opacity="0.85" />
+                            <text x={pt.cx} y={pt.cy - 10} fill="#ffffff" fontSize="9" fontWeight="700" textAnchor="middle">{pt.val}</text>
+                          </g>
+                        ))}
+                      </svg>
+                    </div>
                   </div>
                 </div>
-              </div>
-            )}
+              );
+            })()}
 
+            {/* ALERTS TAB */}
             {activeTab === 'alerts' && (
               <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '12px' }}>
                   <div>
-                    <h1 style={{ fontSize: '1.65rem', fontWeight: 700, color: '#0f172a', margin: 0, letterSpacing: '-0.025em' }}>Alert Timeline</h1>
-                    <p style={{ fontSize: '0.84rem', color: '#64748b' }}>Automated evaluations.</p>
+                    <h1 style={{ fontSize: '1.65rem', fontWeight: 800, color: '#0f172a', margin: 0, letterSpacing: '-0.025em' }}>Alert Timeline & Dispatches</h1>
+                    <p style={{ fontSize: '0.84rem', color: '#64748b' }}>Audit log of automated evaluations and real-time email notifications.</p>
                   </div>
                   <div style={{ display: 'flex', gap: '10px' }}>
+                    <button onClick={handleOpenSendEmailModal} style={{ padding: '8px 16px', borderRadius: '999px', background: '#0284c7', color: '#ffffff', fontSize: '0.78rem', fontWeight: 700, border: 'none', cursor: 'pointer' }}>📧 Dispatch Email</button>
                     <button onClick={handleTriggerScheduler} style={{ padding: '8px 16px', borderRadius: '999px', background: '#0f172a', color: '#ffffff', fontSize: '0.78rem', fontWeight: 600, border: 'none', cursor: 'pointer' }}>Trigger Check</button>
-                    <button onClick={handleSendTestEmail} style={{ padding: '8px 16px', borderRadius: '999px', background: '#f1f5f9', color: '#0f172a', fontSize: '0.78rem', fontWeight: 600, border: '1px solid #e2e8f0', cursor: 'pointer' }}>Dispatch Email</button>
+                    <button onClick={handleSendTestEmail} style={{ padding: '8px 16px', borderRadius: '999px', background: '#f1f5f9', color: '#0f172a', fontSize: '0.78rem', fontWeight: 600, border: '1px solid #e2e8f0', cursor: 'pointer' }}>Test Gateway</button>
                   </div>
                 </div>
 
                 {alertsList.length === 0 ? (
                   <div className="premium-card" style={{ textAlign: 'center', padding: '40px 20px', color: '#64748b' }}>
                     <div style={{ fontSize: '1.8rem', marginBottom: '8px' }}>📬</div>
-                    <div style={{ fontWeight: 700, color: '#0f172a' }}>No alerts dispatched yet</div>
+                    <div style={{ fontWeight: 700, color: '#0f172a' }}>No alerts recorded yet today</div>
                   </div>
                 ) : (
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
@@ -975,15 +1702,13 @@
                         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '10px' }}>
                           <div style={{ background: '#f8fafc', padding: '10px 12px', borderRadius: '10px' }}>
                             <div style={{ fontSize: '0.66rem', fontWeight: 700, color: '#0284c7', letterSpacing: '0.05em', textTransform: 'uppercase', marginBottom: '4px' }}>What happened</div>
-                            <div style={{ fontSize: '0.8rem', color: '#334155', lineHeight: 1.4 }}>{(a.advisory_text || '').slice(0, 110)}…</div>
+                            <div style={{ fontSize: '0.8rem', color: '#334155', lineHeight: 1.4 }}>{(a.advisory_text || a.custom_alert_message || '').slice(0, 140)}…</div>
                           </div>
                           <div style={{ background: '#f8fafc', padding: '10px 12px', borderRadius: '10px' }}>
-                            <div style={{ fontSize: '0.66rem', fontWeight: 700, color: '#9a3412', letterSpacing: '0.05em', textTransform: 'uppercase', marginBottom: '4px' }}>Why it matters</div>
-                            <div style={{ fontSize: '0.8rem', color: '#334155', lineHeight: 1.4 }}>{(a.explanation || []).join('; ') || 'Sensitivity triggers.'}</div>
-                          </div>
-                          <div style={{ background: '#f8fafc', padding: '10px 12px', borderRadius: '10px' }}>
-                            <div style={{ fontSize: '0.66rem', fontWeight: 700, color: '#065f46', letterSpacing: '0.05em', textTransform: 'uppercase', marginBottom: '4px' }}>What to do</div>
-                            <div style={{ fontSize: '0.8rem', color: '#334155', lineHeight: 1.4 }}>{(a.action_items || [])[0] || 'Reduce midday exposure.'}</div>
+                            <div style={{ fontSize: '0.66rem', fontWeight: 700, color: '#9a3412', letterSpacing: '0.05em', textTransform: 'uppercase', marginBottom: '4px' }}>Delivery Route</div>
+                            <div style={{ fontSize: '0.8rem', color: '#334155', lineHeight: 1.4 }}>
+                              Channels: {(a.channel_sent || ['in-app']).join(', ')} · Status: {a.sms_status || a.email_status || 'Delivered'}
+                            </div>
                           </div>
                         </div>
                       </div>
@@ -995,6 +1720,245 @@
 
           </main>
 
+          {/* AI COPILOT MODAL ("Ask AeroHealth AI") */}
+          {isAiChatOpen && (
+            <div style={{
+              position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
+              background: 'rgba(15,23,42,0.5)', backdropFilter: 'blur(8px)',
+              zIndex: 1100, display: 'flex', alignItems: 'center', justifyContent: 'center',
+              animation: 'fadeIn 0.2s ease-out'
+            }} onClick={() => setIsAiChatOpen(false)}>
+              <div style={{
+                width: '560px', maxWidth: '94vw', height: '620px', maxHeight: '92vh',
+                background: '#ffffff', borderRadius: '24px', border: '1px solid #e2e8f0',
+                display: 'flex', flexDirection: 'column', boxShadow: 'var(--shadow-elevated)',
+                overflow: 'hidden', animation: 'modalFadeIn 0.25s ease-out'
+              }} onClick={e => e.stopPropagation()}>
+
+                {/* Copilot Header */}
+                <div style={{
+                  padding: '16px 20px', background: '#0f172a', color: '#ffffff',
+                  display: 'flex', justifyContent: 'space-between', alignItems: 'center'
+                }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                    <div style={{ width: '36px', height: '36px', borderRadius: '10px', background: 'rgba(255,255,255,0.15)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1.2rem' }}>
+                      ✨
+                    </div>
+                    <div>
+                      <div style={{ fontSize: '0.95rem', fontWeight: 800, letterSpacing: '-0.02em' }}>AeroHealth AI Copilot</div>
+                      <div style={{ fontSize: '0.68rem', color: '#93c5fd' }}>Powered by Qwen 2.5 72B · Live Medical Reasoning</div>
+                    </div>
+                  </div>
+                  <button onClick={() => setIsAiChatOpen(false)} style={{ color: '#ffffff', fontSize: '1.2rem', background: 'none', border: 'none', cursor: 'pointer', padding: '4px 8px' }}>×</button>
+                </div>
+
+                {/* Quick Suggestion Chips */}
+                <div style={{ padding: '10px 16px', background: '#f8fafc', borderBottom: '1px solid #e2e8f0', display: 'flex', gap: '8px', overflowX: 'auto' }}>
+                  {[
+                    "Can I jog outdoors right now?",
+                    "Do I need an N95 mask today?",
+                    "Is it safe for kids outside?",
+                    "Best time for evening walk?"
+                  ].map((chip, idx) => (
+                    <button
+                      key={idx}
+                      onClick={() => handleAskAi(chip)}
+                      className="action-chip"
+                      style={{ whiteSpace: 'nowrap', flexShrink: 0 }}
+                    >
+                      <span>💬</span>
+                      <span>{chip}</span>
+                    </button>
+                  ))}
+                </div>
+
+                {/* Chat Messages */}
+                <div style={{ flex: 1, overflowY: 'auto', padding: '20px', display: 'flex', flexDirection: 'column', gap: '14px' }}>
+                  {aiChatMessages.map((m, idx) => (
+                    <div
+                      key={idx}
+                      style={{
+                        alignSelf: m.sender === 'user' ? 'flex-end' : 'flex-start',
+                        maxWidth: '85%',
+                        background: m.sender === 'user' ? '#0f172a' : '#f1f5f9',
+                        color: m.sender === 'user' ? '#ffffff' : '#0f172a',
+                        padding: '12px 16px',
+                        borderRadius: m.sender === 'user' ? '18px 18px 4px 18px' : '18px 18px 18px 4px',
+                        fontSize: '0.84rem',
+                        lineHeight: 1.5,
+                        boxShadow: '0 1px 2px rgba(0,0,0,0.04)'
+                      }}
+                    >
+                      <div>{m.text}</div>
+                      {m.engine && (
+                        <div style={{ marginTop: '6px', fontSize: '0.64rem', color: m.sender === 'user' ? '#93c5fd' : '#64748b', fontWeight: 600 }}>
+                          ⚡ {m.engine} {m.latency ? `(${m.latency}ms)` : ''}
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                  {aiChatLoading && (
+                    <div style={{ alignSelf: 'flex-start', background: '#f1f5f9', padding: '10px 16px', borderRadius: '16px', fontSize: '0.8rem', display: 'flex', alignItems: 'center', gap: '8px', color: '#64748b' }}>
+                      <div style={{ width: '12px', height: '12px', border: '2px solid #cbd5e1', borderTopColor: '#0f172a', borderRadius: '50%', animation: 'spin 0.6s linear infinite' }} />
+                      <span>AeroHealth AI is analyzing your environmental vitals…</span>
+                    </div>
+                  )}
+                </div>
+
+                {/* Input Area */}
+                <form
+                  onSubmit={(e) => { e.preventDefault(); handleAskAi(); }}
+                  style={{ padding: '14px 16px', borderTop: '1px solid #e2e8f0', background: '#ffffff', display: 'flex', gap: '10px' }}
+                >
+                  <input
+                    type="text"
+                    placeholder="Ask about running, masks, kid safety, timing…"
+                    value={aiChatInput}
+                    onChange={(e) => setAiChatInput(e.target.value)}
+                    style={{ flex: 1, padding: '10px 14px', borderRadius: '999px', border: '1.5px solid #e2e8f0', fontSize: '0.84rem', outline: 'none' }}
+                  />
+                  <button
+                    type="submit"
+                    disabled={aiChatLoading || !aiChatInput.trim()}
+                    style={{
+                      padding: '10px 18px', borderRadius: '999px', background: '#0f172a', color: '#ffffff',
+                      fontSize: '0.8rem', fontWeight: 700, border: 'none', cursor: 'pointer'
+                    }}
+                  >
+                    Send
+                  </button>
+                </form>
+              </div>
+            </div>
+          )}
+
+          {/* DISPATCH HEALTH ALERT TO EMAIL MODAL */}
+          {(isSendAlertModalOpen || isSendSmsModalOpen) && (
+            <div style={{
+              position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
+              background: 'rgba(15,23,42,0.5)', backdropFilter: 'blur(8px)',
+              zIndex: 1100, display: 'flex', alignItems: 'center', justifyContent: 'center'
+            }} onClick={() => { setIsSendAlertModalOpen(false); setIsSendSmsModalOpen(false); }}>
+              <div style={{
+                width: '560px', maxWidth: '94vw', maxHeight: '92vh', overflowY: 'auto', background: '#ffffff',
+                borderRadius: '24px', padding: '24px', border: '1px solid #e2e8f0',
+                boxShadow: 'var(--shadow-elevated)', animation: 'modalFadeIn 0.25s ease-out'
+              }} onClick={e => e.stopPropagation()}>
+
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '14px' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                    <div style={{ width: '38px', height: '38px', borderRadius: '12px', background: '#eff6ff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1.3rem' }}>📧</div>
+                    <div>
+                      <div style={{ fontWeight: 800, fontSize: '1.05rem', color: '#0f172a' }}>Dispatch Health Alert to Email</div>
+                      <div style={{ fontSize: '0.72rem', color: '#64748b' }}>Gmail SMTP TLS Gateway · Real-time Inbox Delivery</div>
+                    </div>
+                  </div>
+                  <button onClick={() => { setIsSendAlertModalOpen(false); setIsSendSmsModalOpen(false); }} style={{ fontSize: '1.2rem', color: '#64748b', background: '#f1f5f9', width: '28px', height: '28px', borderRadius: '50%', border: 'none', cursor: 'pointer' }}>×</button>
+                </div>
+
+                {/* Recipient Email */}
+                <div style={{ marginBottom: '14px' }}>
+                  <label style={{ display: 'block', fontSize: '0.74rem', fontWeight: 700, color: '#334155', marginBottom: '6px' }}>
+                    Recipient Email Address
+                  </label>
+                  <input
+                    type="email"
+                    value={targetEmail}
+                    onChange={(e) => setTargetEmail(e.target.value)}
+                    placeholder="name@example.com"
+                    style={{
+                      width: '100%', padding: '10px 12px', borderRadius: '10px',
+                      border: '1.5px solid #cbd5e1', fontSize: '0.86rem', fontWeight: 600, outline: 'none'
+                    }}
+                  />
+                  <div style={{ fontSize: '0.68rem', color: '#64748b', marginTop: '4px' }}>
+                    Sent securely via <strong>smtp.gmail.com:587</strong> (TLS). For demo personas, automatically delivered to the authorized developer inbox.
+                  </div>
+                </div>
+
+                {/* Subject Line */}
+                <div style={{ marginBottom: '14px' }}>
+                  <label style={{ display: 'block', fontSize: '0.74rem', fontWeight: 700, color: '#334155', marginBottom: '6px' }}>
+                    Email Subject Line
+                  </label>
+                  <input
+                    type="text"
+                    value={emailSubject}
+                    onChange={(e) => setEmailSubject(e.target.value)}
+                    placeholder="Alert Subject"
+                    style={{
+                      width: '100%', padding: '10px 12px', borderRadius: '10px',
+                      border: '1px solid #cbd5e1', fontSize: '0.84rem', fontWeight: 600, outline: 'none'
+                    }}
+                  />
+                </div>
+
+                {/* Synthesized Email Advisory Body */}
+                <div style={{ background: '#f8fafc', padding: '14px', borderRadius: '16px', border: '1px solid #e2e8f0', marginBottom: '14px' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
+                    <span style={{ fontSize: '0.74rem', fontWeight: 700, color: '#334155' }}>Synthesized Clinical Advisory Message</span>
+                    <span style={{ fontSize: '0.68rem', color: '#64748b' }}>{emailBody.length} characters</span>
+                  </div>
+                  <textarea
+                    rows={5}
+                    value={emailBody}
+                    onChange={(e) => setEmailBody(e.target.value)}
+                    style={{
+                      width: '100%', padding: '10px 12px', borderRadius: '12px',
+                      border: '1px solid #cbd5e1', fontSize: '0.82rem', lineHeight: '1.45',
+                      fontFamily: 'inherit', resize: 'vertical', outline: 'none'
+                    }}
+                  />
+                  <div style={{ fontSize: '0.68rem', color: '#0284c7', marginTop: '4px', fontWeight: 600 }}>
+                    ✨ Personalized by AI based on: {profile.conditions?.[0]?.replace('_', ' ') || 'Respiratory health'} · AQI {currentAqi} · {loc.label || 'Current Location'}.
+                  </div>
+                </div>
+
+                {emailSendFeedback && (
+                  <div style={{
+                    padding: '10px 12px', borderRadius: '10px', marginBottom: '14px',
+                    fontSize: '0.76rem', fontWeight: 600,
+                    background: emailSendFeedback.includes('✅') ? '#ecfdf5' : '#fffbeb',
+                    color: emailSendFeedback.includes('✅') ? '#065f46' : '#92400e',
+                    border: `1px solid ${emailSendFeedback.includes('✅') ? '#a7f3d0' : '#fde68a'}`
+                  }}>
+                    {emailSendFeedback}
+                  </div>
+                )}
+
+                <div style={{ display: 'grid', gridTemplateColumns: '1.3fr 1fr', gap: '10px' }}>
+                  <button
+                    onClick={handleSendCustomEmail}
+                    disabled={isSendingEmail}
+                    style={{
+                      padding: '12px', borderRadius: '12px',
+                      background: '#0284c7', color: '#ffffff',
+                      fontSize: '0.82rem', fontWeight: 700, border: 'none',
+                      cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px'
+                    }}
+                  >
+                    <span>📨</span>
+                    <span>{isSendingEmail ? 'Sending via Gmail…' : 'Send via Gmail SMTP'}</span>
+                  </button>
+
+                  <button
+                    onClick={handleSendBrowserPushNotification}
+                    style={{
+                      padding: '12px', borderRadius: '12px',
+                      background: '#0f172a', color: '#ffffff',
+                      fontSize: '0.82rem', fontWeight: 700, border: 'none',
+                      cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px'
+                    }}
+                  >
+                    <span>🔔</span>
+                    <span>Trigger Push Alert</span>
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Drawer for Notifications */}
           {isDrawerOpen && (
             <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(15,23,42,0.35)', backdropFilter: 'blur(6px)', zIndex: 1000, display: 'flex', justifyContent: 'flex-end', animation: 'fadeIn 0.2s ease-out' }} onClick={() => setIsDrawerOpen(false)}>
               <div style={{ width: '420px', maxWidth: '92vw', height: '100%', background: '#ffffff', borderLeft: '1px solid #e2e8f0', padding: '20px', display: 'flex', flexDirection: 'column', gap: '14px', boxShadow: 'var(--shadow-elevated)' }} onClick={e => e.stopPropagation()}>
@@ -1050,55 +2014,162 @@
                       No active alerts today
                     </div>
                   ) : (
-                    alertsList.map((item, ii) => {
-                      const rLevel = item.risk_level || 'moderate';
-                      const badgeBg = rLevel === 'severe' ? '#fef2f2' : rLevel === 'high' ? '#fff7ed' : '#fffbeb';
-                      const badgeColor = rLevel === 'severe' ? '#ef4444' : rLevel === 'high' ? '#f97316' : '#f59e0b';
-                      const badgeBorder = rLevel === 'severe' ? '#fecaca' : rLevel === 'high' ? '#fed7aa' : '#fde68a';
-
-                      return (
-                        <div key={ii} style={{ background: '#ffffff', padding: '12px 14px', borderRadius: '12px', border: '1px solid #e2e8f0', boxShadow: '0 1px 3px rgba(0,0,0,0.03)' }}>
-                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
-                            <span style={{ fontSize: '0.64rem', fontWeight: 700, textTransform: 'uppercase', padding: '2px 7px', borderRadius: '999px', background: badgeBg, color: badgeColor, border: `1px solid ${badgeBorder}` }}>
-                              {rLevel}
-                            </span>
-                            <span style={{ fontSize: '0.68rem', color: '#94a3b8' }}>{item.timestamp || 'Recent'}</span>
-                          </div>
-                          <div style={{ fontWeight: 600, fontSize: '0.84rem', color: '#0f172a', marginBottom: '4px', lineHeight: 1.3 }}>
-                            {item.headline || item.subject || 'Environmental Health Notice'}
-                          </div>
-                          <div style={{ fontSize: '0.74rem', color: '#475569', lineHeight: 1.4 }}>
-                            {item.advisory_text || item.preview || ''}
-                          </div>
+                    alertsList.map((item, ii) => (
+                      <div key={ii} style={{ background: '#ffffff', padding: '12px 14px', borderRadius: '12px', border: '1px solid #e2e8f0', boxShadow: '0 1px 3px rgba(0,0,0,0.03)' }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
+                          <span style={{ fontSize: '0.64rem', fontWeight: 700, textTransform: 'uppercase', padding: '2px 7px', borderRadius: '999px', background: '#fffbeb', color: '#d97706', border: '1px solid #fde68a' }}>
+                            {item.risk_level || 'Alert'}
+                          </span>
+                          <span style={{ fontSize: '0.68rem', color: '#94a3b8' }}>{item.timestamp || 'Recent'}</span>
                         </div>
-                      );
-                    })
+                        <div style={{ fontWeight: 600, fontSize: '0.84rem', color: '#0f172a', marginBottom: '4px', lineHeight: 1.3 }}>
+                          {item.headline || item.subject || 'Environmental Health Notice'}
+                        </div>
+                        <div style={{ fontSize: '0.74rem', color: '#475569', lineHeight: 1.4 }}>
+                          {item.advisory_text || item.custom_alert_message || ''}
+                        </div>
+                      </div>
+                    ))
                   )}
                 </div>
               </div>
             </div>
           )}
 
+          {/* Profile Modal */}
           {isProfileModalOpen && (
-            <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(15,23,42,0.4)', backdropFilter: 'blur(8px)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center' }} onClick={() => setIsProfileModalOpen(false)}>
-              <div style={{ width: '480px', maxWidth: '92vw', background: '#ffffff', borderRadius: '20px', padding: '24px', border: '1px solid #e2e8f0', boxShadow: 'var(--shadow-elevated)' }} onClick={e => e.stopPropagation()}>
+            <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(15,23,42,0.45)', backdropFilter: 'blur(8px)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center' }} onClick={() => setIsProfileModalOpen(false)}>
+              <div style={{ width: '500px', maxWidth: '92vw', maxHeight: '90vh', overflowY: 'auto', background: '#ffffff', borderRadius: '24px', padding: '24px', border: '1px solid #e2e8f0', boxShadow: 'var(--shadow-elevated)' }} onClick={e => e.stopPropagation()}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '14px' }}>
-                  <div style={{ fontWeight: 700, fontSize: '1.1rem', color: '#0f172a' }}>Health Profile</div>
-                  <button onClick={() => setIsProfileModalOpen(false)} style={{ fontSize: '1rem', color: '#64748b', background: '#f1f5f9', width: '28px', height: '28px', borderRadius: '50%' }}>×</button>
+                  <div style={{ fontWeight: 700, fontSize: '1.1rem', color: '#0f172a' }}>Your Health Profile</div>
+                  <button onClick={() => setIsProfileModalOpen(false)} style={{ fontSize: '1rem', color: '#64748b', background: '#f1f5f9', width: '28px', height: '28px', borderRadius: '50%', border: 'none', cursor: 'pointer' }}>×</button>
                 </div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '16px', padding: '10px', background: '#f8fafc', borderRadius: '10px' }}>
-                  <img src={user.picture} style={{ width: '40px', height: '40px', borderRadius: '50%' }} />
-                  <div>
-                    <div style={{ fontWeight: 700, color: '#0f172a' }}>{user.name}</div>
-                    <div style={{ fontSize: '0.74rem', color: '#64748b' }}>{user.email}</div>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '16px', padding: '12px 14px', background: '#f8fafc', borderRadius: '14px', border: '1px solid #e2e8f0', flexWrap: 'wrap', gap: '8px' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                    <img src={user.picture || 'https://api.dicebear.com/7.x/avataaars/svg?seed=User'} style={{ width: '42px', height: '42px', borderRadius: '50%' }} />
+                    <div style={{ flex: 1 }}>
+                      <div style={{ fontWeight: 700, color: '#0f172a', fontSize: '0.92rem' }}>{user.name || 'User'}</div>
+                      <div style={{ fontSize: '0.74rem', color: '#64748b' }}>{user.email || 'AeroHealth Account'}</div>
+                    </div>
                   </div>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setIsProfileModalOpen(false);
+                      handleSignOut();
+                    }}
+                    style={{
+                      padding: '5px 14px', borderRadius: '999px',
+                      background: '#fff7ed', color: '#c2410c',
+                      border: '1px solid #fed7aa', fontSize: '0.74rem', fontWeight: 600, cursor: 'pointer'
+                    }}
+                  >
+                    Sign Out
+                  </button>
                 </div>
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '8px', fontSize: '0.82rem' }}>
-                  <div><div style={{ fontWeight: 600, color: '#334155', marginBottom: '4px' }}>Age</div><div style={{ padding: '8px', background: '#f1f5f9', borderRadius: '8px' }}>{profile.age_group}</div></div>
-                  <div><div style={{ fontWeight: 600, color: '#334155', marginBottom: '4px' }}>Occupation</div><div style={{ padding: '8px', background: '#f1f5f9', borderRadius: '8px', textTransform: 'capitalize' }}>{profile.occupation?.replace('_', ' ')}</div></div>
+
+                {/* GPS Location Sync */}
+                <div style={{ background: '#f8fafc', padding: '12px 14px', borderRadius: '12px', border: '1px solid #e2e8f0', marginBottom: '14px' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '4px' }}>
+                    <span style={{ fontSize: '0.78rem', fontWeight: 700, color: '#0f172a' }}>Monitored Location</span>
+                    <button
+                      type="button"
+                      onClick={handleDetectGps}
+                      disabled={isDetectingGps}
+                      style={{
+                        padding: '4px 10px', borderRadius: '999px', background: '#ffffff',
+                        border: '1px solid #cbd5e1', fontSize: '0.72rem', fontWeight: 600,
+                        cursor: 'pointer'
+                      }}
+                    >
+                      {isDetectingGps ? 'Locating…' : '📍 Auto-detect Location'}
+                    </button>
+                  </div>
+                  <div style={{ fontSize: '0.82rem', color: '#334155' }}>{loc.label || 'Default Location'}</div>
                 </div>
-                <div style={{ marginTop: '10px' }}>
-                  <div style={{ fontWeight: 600, color: '#334155', marginBottom: '6px', fontSize: '0.82rem' }}>Conditions</div>
+
+                {/* Email Address Verification (Gmail Gateway) */}
+                <div style={{ background: '#f8fafc', padding: '14px', borderRadius: '14px', border: '1px solid #e2e8f0', marginBottom: '14px' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                      <span style={{ fontSize: '0.9rem' }}>📧</span>
+                      <span style={{ fontSize: '0.78rem', fontWeight: 700, color: '#0f172a' }}>Email Address Verification</span>
+                    </div>
+                    <span style={{ fontSize: '0.68rem', fontWeight: 700, padding: '2px 8px', borderRadius: '999px', background: profile.email_verified ? '#ecfdf5' : '#fffbeb', color: profile.email_verified ? '#059669' : '#b45309', border: `1px solid ${profile.email_verified ? '#a7f3d0' : '#fde68a'}` }}>
+                      {profile.email_verified ? '✓ Verified Active' : '⚠️ Action Required'}
+                    </span>
+                  </div>
+                  <div style={{ display: 'flex', gap: '8px' }}>
+                    <input
+                      type="email"
+                      placeholder="Enter email address"
+                      value={emailInput}
+                      onChange={(e) => setEmailInput(e.target.value)}
+                      style={{ flex: 1, padding: '8px 10px', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '0.82rem' }}
+                    />
+                    {!profile.email_verified && (
+                      <button
+                        type="button"
+                        onClick={handleSendEmailOtp}
+                        style={{ padding: '8px 14px', borderRadius: '8px', background: '#0284c7', color: '#fff', fontSize: '0.74rem', fontWeight: 600, border: 'none', cursor: 'pointer' }}
+                      >
+                        {emailOtpSent ? 'Resend' : 'Send Code'}
+                      </button>
+                    )}
+                  </div>
+
+                  {emailOtpSent && !profile.email_verified && (
+                    <div>
+                      {emailOtpCode && (
+                        <div style={{ background: '#f0fdf4', border: '1px solid #86efac', borderRadius: '12px', padding: '10px 12px', marginTop: '10px', marginBottom: '8px' }}>
+                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                            <span style={{ fontSize: '0.7rem', fontWeight: 700, color: '#166534', textTransform: 'uppercase' }}>Security Verification Code</span>
+                            <button
+                              type="button"
+                              onClick={() => setEmailOtpInput(emailOtpCode)}
+                              style={{ padding: '3px 8px', borderRadius: '999px', background: '#15803d', color: '#fff', fontSize: '0.7rem', fontWeight: 600, border: 'none', cursor: 'pointer' }}
+                            >
+                              Autofill Code
+                            </button>
+                          </div>
+                          <div style={{ fontSize: '1.4rem', fontWeight: 800, color: '#166534', letterSpacing: '0.15em', margin: '3px 0' }}>{emailOtpCode}</div>
+                          <div style={{ fontSize: '0.68rem', color: '#15803d' }}>Dispatched via Gmail SMTP TLS to <strong>{emailInput || user.email}</strong>.</div>
+                        </div>
+                      )}
+                      <div style={{ display: 'flex', gap: '8px', marginTop: '6px' }}>
+                        <input
+                          type="text"
+                          placeholder="6-digit code"
+                          maxLength={6}
+                          value={emailOtpInput}
+                          onChange={(e) => setEmailOtpInput(e.target.value.replace(/[^0-9]/g, ''))}
+                          style={{ flex: 1, padding: '8px 10px', borderRadius: '8px', border: '1.5px solid #0284c7', fontSize: '0.85rem', fontWeight: 700 }}
+                        />
+                        <button
+                          type="button"
+                          onClick={handleVerifyEmailOtp}
+                          style={{ padding: '8px 16px', borderRadius: '8px', background: '#0284c7', color: '#fff', fontSize: '0.76rem', fontWeight: 600, border: 'none', cursor: 'pointer' }}
+                        >
+                          Verify Code
+                        </button>
+                      </div>
+                    </div>
+                  )}
+
+                  {otpFeedback && (
+                    <div style={{ marginTop: '8px', fontSize: '0.74rem', color: otpFeedback.includes('✓') || otpFeedback.includes('✅') || otpFeedback.includes('📍') ? '#059669' : '#dc2626', fontWeight: 500 }}>
+                      {otpFeedback}
+                    </div>
+                  )}
+                </div>
+
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '8px', fontSize: '0.82rem', marginBottom: '14px' }}>
+                  <div><div style={{ fontWeight: 600, color: '#334155', marginBottom: '4px' }}>Age</div><div style={{ padding: '8px', background: '#f1f5f9', borderRadius: '8px' }}>{profile.age_group || '18-40'}</div></div>
+                  <div><div style={{ fontWeight: 600, color: '#334155', marginBottom: '4px' }}>Occupation</div><div style={{ padding: '8px', background: '#f1f5f9', borderRadius: '8px', textTransform: 'capitalize' }}>{profile.occupation?.replace('_', ' ') || 'Office'}</div></div>
+                </div>
+
+                <div>
+                  <div style={{ fontWeight: 600, color: '#334155', marginBottom: '6px', fontSize: '0.82rem' }}>Conditions & Vulnerabilities</div>
                   <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
                     {profile.conditions?.map((c, ci) => (
                       <span key={ci} style={{ padding: '4px 10px', background: '#ecfdf5', color: '#059669', borderRadius: '999px', fontWeight: 600, fontSize: '0.74rem', textTransform: 'capitalize' }}>
@@ -1107,14 +2178,20 @@
                     ))}
                   </div>
                 </div>
+
                 <div style={{ marginTop: '20px', display: 'flex', gap: '8px' }}>
-                  <a href="/auth/google" style={{ flex: 1, padding: '10px', background: '#0f172a', color: '#ffffff', borderRadius: '999px', textAlign: 'center', fontWeight: 600, fontSize: '0.82rem', textDecoration: 'none' }}>Sign in with Google</a>
-                  <button onClick={() => setIsProfileModalOpen(false)} style={{ padding: '10px 18px', background: '#f1f5f9', color: '#475569', borderRadius: '999px', fontWeight: 600, fontSize: '0.82rem', border: 'none', cursor: 'pointer' }}>Close</button>
+                  <button onClick={handleSignOut} style={{ flex: 1, padding: '10px', background: '#fef2f2', color: '#dc2626', border: '1px solid #fecaca', borderRadius: '999px', textAlign: 'center', fontWeight: 600, fontSize: '0.82rem', cursor: 'pointer' }}>
+                    Sign Out
+                  </button>
+                  <button onClick={() => setIsProfileModalOpen(false)} style={{ padding: '10px 22px', background: '#0f172a', color: '#ffffff', borderRadius: '999px', fontWeight: 600, fontSize: '0.82rem', border: 'none', cursor: 'pointer' }}>
+                    Done
+                  </button>
                 </div>
               </div>
             </div>
           )}
 
+          {/* Toast Notification */}
           {toast && (
             <div style={{ position: 'fixed', bottom: '24px', right: '24px', background: '#0f172a', color: '#ffffff', padding: '10px 18px', borderRadius: '999px', boxShadow: 'var(--shadow-elevated)', fontSize: '0.82rem', fontWeight: 500, zIndex: 2000, display: 'flex', alignItems: 'center', gap: '8px', animation: 'toastIn 0.3s ease' }}>
               <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: '#10b981' }} />

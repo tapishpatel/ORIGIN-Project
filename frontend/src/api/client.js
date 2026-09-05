@@ -19,21 +19,25 @@ let authToken = localStorage.getItem('aero_auth_token') || null;
 
 export const setAuthToken = (token) => {
   authToken = token;
-  localStorage.setItem('aero_auth_token', token);
+  if (token) {
+    localStorage.setItem('aero_auth_token', token);
+  } else {
+    localStorage.removeItem('aero_auth_token');
+  }
 };
 
-// Safety check: clear old demo token if it somehow persisted
-if (authToken && authToken.startsWith('token-demo')) {
-  authToken = null;
-  localStorage.removeItem('aero_auth_token');
-}
-
-export const getAuthToken = () => authToken;
+export const getAuthToken = () => {
+  if (!authToken) {
+    authToken = localStorage.getItem('aero_auth_token') || null;
+  }
+  return authToken;
+};
 
 const request = async (endpoint, options = {}) => {
+  const token = getAuthToken();
   const headers = {
     'Content-Type': 'application/json',
-    ...(authToken ? { Authorization: `Bearer ${authToken}` } : {}),
+    ...(token ? { Authorization: `Bearer ${token}` } : {}),
     ...options.headers,
   };
 
@@ -41,7 +45,7 @@ const request = async (endpoint, options = {}) => {
     const res = await fetch(`${API_BASE_URL}${endpoint}`, { ...options, headers });
     if (!res.ok) {
       const err = await res.json().catch(() => ({ detail: res.statusText }));
-      throw new Error(err.detail || `Request failed with status ${res.status}`);
+      throw new Error(err.detail || err.error || `Request failed with status ${res.status}`);
     }
     return await res.json();
   } catch (error) {
@@ -51,6 +55,27 @@ const request = async (endpoint, options = {}) => {
 };
 
 export const api = {
+  // Authentication & Demo Personas
+  signup: (userData) =>
+    request('/auth/signup', {
+      method: 'POST',
+      body: JSON.stringify(userData),
+    }),
+  login: (email, password) =>
+    request('/auth/login', {
+      method: 'POST',
+      body: JSON.stringify({ email, password }),
+    }),
+  demoLogin: (personaId) =>
+    request('/auth/demo-login', {
+      method: 'POST',
+      body: JSON.stringify({ persona_id: personaId }),
+    }),
+  getPersonas: () => request('/auth/personas'),
+  logout: () => {
+    setAuthToken('');
+  },
+
   // Dashboard & Real-Time Data with Fallback Simulation Flag
   getDashboard: (lat, lon, label, forceFallback = false) => {
     let url = '/api/dashboard';
@@ -106,5 +131,56 @@ export const api = {
     request('/api/notifications/test-email', {
       method: 'POST',
       body: JSON.stringify({ recipient }),
+    }),
+
+  // Geolocation & Fast2SMS / Email OTP
+  autoDetectLocation: () => request('/api/geocode/auto'),
+  reverseGeocode: (lat, lon) => request(`/api/geocode/reverse?lat=${lat}&lon=${lon}`),
+  sendEmailOtp: (email) =>
+    request('/api/email/send-otp', {
+      method: 'POST',
+      body: JSON.stringify({ email }),
+    }),
+  verifyEmailOtp: (email, otp) =>
+    request('/api/email/verify-otp', {
+      method: 'POST',
+      body: JSON.stringify({ email, otp }),
+    }),
+  sendSmsOtp: (phone, email) =>
+    request('/api/sms/send-otp', {
+      method: 'POST',
+      body: JSON.stringify({ phone, email }),
+    }),
+  verifySmsOtp: (phone, otp) =>
+    request('/api/sms/verify-otp', {
+      method: 'POST',
+      body: JSON.stringify({ phone, otp }),
+    }),
+
+  // AI Health Copilot, Email & SMS Dispatch
+  queryAiChat: (question) =>
+    request('/api/ai-chat', {
+      method: 'POST',
+      body: JSON.stringify({ question }),
+    }),
+  draftEmail: () =>
+    request('/api/advisory/draft-email', {
+      method: 'POST',
+      body: JSON.stringify({}),
+    }),
+  sendCustomEmail: (email, subject, message) =>
+    request('/api/notifications/send-custom-email', {
+      method: 'POST',
+      body: JSON.stringify({ email, subject, message }),
+    }),
+  draftSms: () =>
+    request('/api/advisory/draft-sms', {
+      method: 'POST',
+      body: JSON.stringify({}),
+    }),
+  sendCustomSms: (phone, message) =>
+    request('/api/notifications/send-custom-sms', {
+      method: 'POST',
+      body: JSON.stringify({ phone, message }),
     }),
 };

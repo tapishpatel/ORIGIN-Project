@@ -165,3 +165,65 @@ async def search_cities(
         {"label": "London, England, United Kingdom", "city": "London", "country": "United Kingdom", "lat": 51.5074, "lon": -0.1278},
     ]
     return [p for p in presets if query.lower() in p["label"].lower()]
+
+
+@router.get("/geocode/reverse")
+async def reverse_geocode_endpoint(
+    lat: float = Query(...),
+    lon: float = Query(...),
+):
+    """Reverse geocode latitude and longitude to city/state/country label."""
+    url = f"https://api.bigdatacloud.net/data/reverse-geocode-client?latitude={lat}&longitude={lon}&localityLanguage=en"
+    try:
+        async with httpx.AsyncClient(timeout=5.0) as client:
+            resp = await client.get(url, headers={"User-Agent": "AeroHealth/1.0"})
+            if resp.status_code == 200:
+                data = resp.json()
+                city = data.get("city") or data.get("locality") or data.get("principalSubdivision") or "Current Location"
+                state = data.get("principalSubdivision") or ""
+                country = data.get("countryName") or "India"
+                label = f"{city}, {state}" if state and state != city else f"{city}, {country}"
+                return {"city": city, "state": state, "country": country, "label": label, "lat": lat, "lon": lon}
+    except Exception as e:
+        logger.warning(f"Reverse geocode fallback: {e}")
+    return {"city": "Current Location", "state": "", "country": "India", "label": f"{lat:.2f}, {lon:.2f}", "lat": lat, "lon": lon}
+
+
+@router.get("/geocode/auto")
+async def auto_geocode_endpoint():
+    """Auto-detect client location via IP geolocation."""
+    url = "http://ip-api.com/json/"
+    try:
+        async with httpx.AsyncClient(timeout=4.0) as client:
+            resp = await client.get(url, headers={"User-Agent": "AeroHealth/1.0"})
+            if resp.status_code == 200:
+                data = resp.json()
+                if data.get("status") == "success":
+                    city = data.get("city", "Bhopal")
+                    state = data.get("regionName", "Madhya Pradesh")
+                    country = data.get("country", "India")
+                    lat = float(data.get("lat", 23.2547))
+                    lon = float(data.get("lon", 77.4029))
+                    label = f"{city}, {state}, {country}" if state else f"{city}, {country}"
+                    return {
+                        "city": city,
+                        "state": state,
+                        "country": country,
+                        "label": label,
+                        "lat": lat,
+                        "lon": lon,
+                        "ip": data.get("query", ""),
+                        "is_auto": True,
+                    }
+    except Exception as e:
+        logger.warning(f"Auto IP geocode error: {e}")
+    return {
+        "city": "New Delhi",
+        "state": "Delhi",
+        "country": "India",
+        "label": "New Delhi, Delhi, India",
+        "lat": 28.6139,
+        "lon": 77.2090,
+        "is_auto": False,
+    }
+
